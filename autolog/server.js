@@ -31,7 +31,7 @@ var HASS = require('./lib/hass.js');
 var I18N = require('./public/i18n.js');
 var UNITS = require('./lib/units.js');
 
-var VERSION = '1.3.0';
+var VERSION = '1.4.0';
 
 /* --- configurazione --- */
 var PORT = Number(process.env.PORT || 8099);
@@ -99,11 +99,30 @@ async function mqttConfig() {
 }
 
 var publisher = null;
+var mqttTarget = null;
+
+/*
+ * Stato del publisher, mostrato nella vista Dati. Senza broker i sensori non
+ * esistono: va detto, non lasciato indovinare.
+ */
+function mqttStatus() {
+  if (options.mqtt_enabled === false) return { state: 'disabled' };
+  if (!publisher) return { state: 'unavailable', target: mqttTarget };
+  return {
+    state: publisher.client && publisher.client.connected ? 'connected' : 'disconnected',
+    target: mqttTarget
+  };
+}
 
 async function startPublisher() {
   if (options.mqtt_enabled === false) return;
   var cfg = await mqttConfig();
-  if (!cfg) return;
+  if (!cfg) {
+    console.error('[autolog/mqtt] nessun broker disponibile: i sensori di Home Assistant non verranno creati.');
+    console.error('[autolog/mqtt] installa l\'add-on Mosquitto, oppure indica mqtt_host nelle opzioni.');
+    return;
+  }
+  mqttTarget = cfg.host + ':' + cfg.port;
   cfg.version = VERSION;
   cfg.unitSettings = readUnitSettings;
   publisher = new HASS.Publisher(db, cfg);
@@ -462,7 +481,7 @@ async function handleApi(req, res, url) {
       node: process.version,
       version: VERSION,
       addon: IS_ADDON,
-      mqtt: publisher ? (publisher.client && publisher.client.connected ? 'connesso' : 'disconnesso') : 'non configurato',
+      mqtt: mqttStatus(),
       counts: {
         vehicles: db.prepare('SELECT COUNT(*) c FROM vehicles').get().c,
         fillups: db.prepare('SELECT COUNT(*) c FROM fillups').get().c,

@@ -655,6 +655,15 @@
       } catch (e) { toast(e.message); }
     };
 
+    /*
+     * Stato dei sensori. Senza broker MQTT l'add-on funziona ma non crea nulla
+     * in Home Assistant: è un'assenza che va vista, non dedotta.
+     */
+    var mq = document.createElement('div');
+    mq.className = 'muted';
+    mq.textContent = t('app.loading');
+    main.appendChild(card(t('mqtt.title'), mq));
+
     /* unità e valuta */
     var un = document.createElement('div');
     un.innerHTML =
@@ -769,6 +778,18 @@
     info.textContent = t('app.loading');
     main.appendChild(card(t('data.info'), info));
     api('api/info').then(function (i) {
+      var m = i.mqtt || {};
+      var key = 'mqtt.' + (m.state === 'connected' ? 'connected'
+        : m.state === 'disconnected' ? 'disconnected'
+        : m.state === 'disabled' ? 'disabled' : 'unavailable');
+      mq.textContent = t(key, { target: m.target || '—' });
+      if (m.state !== 'connected') {
+        mq.className = 'warnings';
+        mq.innerHTML = '<li>' + esc(t(key, { target: m.target || '—' })) + '</li>';
+      } else {
+        mq.className = 'muted';
+      }
+
       info.innerHTML =
         'Database: <code>' + esc(i.db_file) + '</code><br>' +
         nfmt(i.db_size / 1024, 1) + ' kB · schema v' + i.schema_version + ' · Node ' + esc(i.node) + '<br>' +

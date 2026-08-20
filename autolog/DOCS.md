@@ -54,6 +54,10 @@ will notice in its long-term statistics.
 With the Mosquitto add-on installed there is nothing to configure: the
 credentials are requested from the Supervisor at startup.
 
+**A broker is required for the sensors.** Without one the logbook still works,
+but nothing appears in Home Assistant — **Data → Home Assistant sensors** tells
+you so explicitly rather than leaving you to work it out.
+
 ## Entities
 
 Every non-archived vehicle gets a **device** carrying ten sensors:

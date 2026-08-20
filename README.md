@@ -46,9 +46,12 @@ replacement for Fuelly that lives in your own house.
 
 3. Install **AutoLog** and start it.
 
-If you already run the **Mosquitto** add-on there is nothing to configure: the
-broker credentials are requested from the Supervisor at startup. Every option
-is documented in [autolog/DOCS.md](autolog/DOCS.md).
+**An MQTT broker is required for the sensors.** If you already run the
+**Mosquitto** add-on there is nothing to configure — the credentials are
+requested from the Supervisor at startup. Without a broker the logbook itself
+still works, and the app says so plainly under **Data → Home Assistant sensors**
+instead of silently creating nothing. Every option is documented in
+[autolog/DOCS.md](autolog/DOCS.md).
 
 ## Entities
 

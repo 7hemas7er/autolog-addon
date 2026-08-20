@@ -121,9 +121,20 @@ URLs relative).
   `Authorization: Bearer $SUPERVISOR_TOKEN`, returning `host`, `port`,
   `username` and `password`. Manual options take precedence, so an external
   broker can be used instead.
-- **`services: mqtt:want`, not `mqtt:need`.** With `need`, the add-on refuses to
-  start when no broker is present. With `want`, the interface still works and
-  the sensors simply do not appear.
+- **`services: mqtt:need`, and enforcement in the app.** Reading the Supervisor
+  source settles what the suffix actually does: `services_role` is used only in
+  `api/apps.py`, to render the list, and in `services/interface.py`, which
+  compares against `PROVIDE_SERVICE` to find who *provides* a service. **No
+  code checks `need` to block startup** — the difference from `want` is
+  declarative. So the real dependency is enforced here: `api/info` returns a
+  structured MQTT state (`connected` / `disconnected` / `unavailable` /
+  `disabled`) and the Data view surfaces it as a warning when no sensors are
+  being created.
+- **Not starting without a broker was rejected.** It is the literal reading of
+  "dependency", but it would lock the user out of their own records because a
+  broker was briefly unreachable, and would break anyone using an external
+  broker configured through the options. A missing broker should be visible,
+  not fatal.
 - **The base image is pinned in the Dockerfile.** The Supervisor passes
   `BUILD_FROM=ghcr.io/home-assistant/base:latest` and ignores a `build_from`
   declared in `build.yaml`, accepting only images from its own registry. The

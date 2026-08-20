@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0
+
+- **Mosquitto is now declared as a required service** (`services: mqtt:need`).
+  Note that the Supervisor does not enforce this — `services_role` is only read
+  to render the list and to identify which add-on *provides* a service, so
+  `need` and `want` differ in what an installer reads, not in behaviour.
+- The dependency is therefore enforced where it can be: **Data → Home Assistant
+  sensors** now states plainly whether the sensors are being published, and
+  says what to do when they are not. The startup log does the same.
+- The add-on deliberately still starts without a broker. Refusing to would lock
+  you out of your own logbook because a broker was briefly down, and would
+  break anyone pointing the options at an external broker.
+
 ## 1.3.1
 
 - Corrected the documentation and test names: the CSV schema with `car_name`,
