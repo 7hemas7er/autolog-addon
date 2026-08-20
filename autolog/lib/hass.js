@@ -12,6 +12,7 @@
 var mqtt = require('./mqtt.js');
 var calc = require('./calc.js');
 var DB = require('./db.js');
+var UNITS = require('./units.js');
 
 var DISCOVERY_PREFIX = 'homeassistant';
 var BASE = 'autolog';
@@ -35,18 +36,32 @@ function isoTimestamp(date) {
  * Definizione dei sensori. L'ordine è quello in cui compaiono nel device.
  * `key` è sia la chiave nel payload di stato sia il suffisso dell'unique_id.
  */
-var SENSORS = [
-  { key: 'consumo_medio', name: 'Consumo medio', unit: 'km/L', state_class: 'measurement', icon: 'mdi:gas-station' },
-  { key: 'consumo_l100', name: 'Consumo medio L/100 km', unit: 'L/100 km', state_class: 'measurement', icon: 'mdi:gas-station-outline' },
-  { key: 'costo_km', name: 'Costo al km', unit: 'EUR/km', state_class: 'measurement', icon: 'mdi:cash' },
-  { key: 'km_totali', name: 'Chilometri totali', unit: 'km', device_class: 'distance', state_class: 'total_increasing', icon: 'mdi:counter' },
-  { key: 'litri_totali', name: 'Litri totali', unit: 'L', device_class: 'volume', state_class: 'total_increasing', icon: 'mdi:fuel' },
-  { key: 'spesa_totale', name: 'Spesa totale', unit: 'EUR', device_class: 'monetary', state_class: 'total_increasing' },
-  { key: 'spesa_mese', name: 'Spesa del mese', unit: 'EUR', device_class: 'monetary', state_class: 'total' },
-  { key: 'ultimo_prezzo', name: 'Ultimo prezzo al litro', unit: 'EUR/L', state_class: 'measurement', icon: 'mdi:currency-eur' },
-  { key: 'ultimo_rifornimento', name: 'Ultimo rifornimento', device_class: 'timestamp', icon: 'mdi:calendar-clock' },
-  { key: 'prossima_scadenza', name: 'Prossima scadenza', device_class: 'timestamp', icon: 'mdi:calendar-alert', attributes: true }
-];
+function sensorList(u) {
+  u = u || { distance: 'km', volume: 'L', consumption: 'km/L', currency: 'EUR', system: 'metric' };
+  var list = [
+    { key: 'consumo_medio', name: 'Consumo medio', unit: u.consumption, state_class: 'measurement', icon: 'mdi:gas-station' },
+    { key: 'consumo_l100', name: 'Consumo medio L/100 km', unit: 'L/100 km', state_class: 'measurement', icon: 'mdi:gas-station-outline' },
+    { key: 'costo_km', name: 'Costo al km', unit: u.currency + '/' + u.distance, state_class: 'measurement', icon: 'mdi:cash' },
+    { key: 'km_totali', name: 'Chilometri totali', unit: u.distance, device_class: 'distance', state_class: 'total_increasing', icon: 'mdi:counter' },
+    { key: 'litri_totali', name: 'Litri totali', unit: u.volume, device_class: 'volume', state_class: 'total_increasing', icon: 'mdi:fuel' },
+    { key: 'spesa_totale', name: 'Spesa totale', unit: u.currency, device_class: 'monetary', state_class: 'total_increasing' },
+    { key: 'spesa_mese', name: 'Spesa del mese', unit: u.currency, device_class: 'monetary', state_class: 'total' },
+    { key: 'ultimo_prezzo', name: 'Ultimo prezzo al litro', unit: u.currency + '/' + u.volume, state_class: 'measurement', icon: 'mdi:currency-eur' },
+    { key: 'ultimo_rifornimento', name: 'Ultimo rifornimento', device_class: 'timestamp', icon: 'mdi:calendar-clock' },
+    { key: 'prossima_scadenza', name: 'Prossima scadenza', device_class: 'timestamp', icon: 'mdi:calendar-alert', attributes: true }
+  ];
+  /*
+   * L/100 km non ha senso fuori dal sistema metrico: in imperiale il sensore
+   * sparisce invece di pubblicare un numero senza significato.
+   */
+  if (UNITS.isImperial(u.system)) {
+    list = list.filter(function (x) { return x.key !== 'consumo_l100'; });
+  }
+  return list;
+}
+
+/* Elenco di default, usato dai test e come riferimento. */
+var SENSORS = sensorList();
 
 function stateTopic(vslug) { return BASE + '/' + vslug + '/state'; }
 function commandTopic(vslug) { return BASE + '/' + vslug + '/cmd/fillup'; }
@@ -86,7 +101,12 @@ function discoveryPayload(vehicle, vslug, sensor, swVersion) {
 }
 
 /* Payload di stato: un solo JSON per veicolo, letto da tutti i sensori. */
-function statePayload(vehicle, fillups, expenses, reminders, today) {
+function statePayload(vehicle, fillups, expenses, reminders, today, units) {
+  var u = units || { system: 'metric', currency: 'EUR' };
+  var sys = u.system || 'metric';
+  var r3 = function (v) { return v === null || v === undefined ? null : Math.round(v * 1000) / 1000; };
+  var r2 = function (v) { return v === null || v === undefined ? null : Math.round(v * 100) / 100; };
+  var r4 = function (v) { return v === null || v === undefined ? null : Math.round(v * 10000) / 10000; };
   var s = calc.computeStats(vehicle, fillups, expenses);
   var currentOdo = s.last_odo;
   var month = String(today).slice(0, 7);
@@ -100,9 +120,9 @@ function statePayload(vehicle, fillups, expenses, reminders, today) {
         titolo: r.title,
         categoria: r.category || '',
         scadenza_data: r.due_date ? String(r.due_date).slice(0, 10) : null,
-        scadenza_km: r.due_odo === null || r.due_odo === undefined ? null : Number(r.due_odo),
+        scadenza_km: r.due_odo === null || r.due_odo === undefined ? null : r2(UNITS.distanceFromKm(Number(r.due_odo), sys)),
         giorni_rimanenti: st.days_left === null ? null : Math.round(st.days_left),
-        km_rimanenti: st.km_left,
+        km_rimanenti: st.km_left === null ? null : r2(UNITS.distanceFromKm(st.km_left, sys)),
         stato: st.status
       };
     });
@@ -117,19 +137,19 @@ function statePayload(vehicle, fillups, expenses, reminders, today) {
   var nextDated = open.find(function (r) { return r.scadenza_data; });
 
   return {
-    consumo_medio: s.avg_kml,
-    consumo_l100: s.avg_l100,
-    costo_km: s.eur_km_total,
-    costo_km_carburante: s.eur_km_fuel,
-    km_totali: s.total_km,
-    litri_totali: s.total_liters,
+    consumo_medio: r2(UNITS.consumptionFromKml(s.avg_kml, sys)),
+    consumo_l100: UNITS.isImperial(sys) ? undefined : s.avg_l100,
+    costo_km: r4(UNITS.costPerDistanceFromKm(s.eur_km_total, sys)),
+    costo_km_carburante: r4(UNITS.costPerDistanceFromKm(s.eur_km_fuel, sys)),
+    km_totali: r2(UNITS.distanceFromKm(s.total_km, sys)),
+    litri_totali: r2(UNITS.volumeFromLiters(s.total_liters, sys)),
     spesa_totale: s.total_cost,
     spesa_carburante: s.fuel_cost,
     spesa_mese: spesaMese,
-    ultimo_prezzo: s.last_price_l,
-    prezzo_medio: s.avg_price_l,
+    ultimo_prezzo: r3(UNITS.pricePerVolumeFromLiter(s.last_price_l, sys)),
+    prezzo_medio: r3(UNITS.pricePerVolumeFromLiter(s.avg_price_l, sys)),
     ultimo_rifornimento: isoTimestamp(s.last_fillup_date),
-    ultimo_km: s.last_odo,
+    ultimo_km: r2(UNITS.distanceFromKm(s.last_odo, sys)),
     rifornimenti: s.count_fillups,
     prossima_scadenza: nextDated ? isoTimestamp(nextDated.scadenza_data) : null,
     scadenze: { elenco: open, aperte: open.length,
@@ -198,10 +218,20 @@ Publisher.prototype.schedule = function () {
   if (this.timer.unref) this.timer.unref();
 };
 
+Publisher.prototype.units = function () {
+  return this.opts.unitSettings ? this.opts.unitSettings()
+    : { system: 'metric', currency: 'EUR', distance: 'km', volume: 'L', consumption: 'km/L' };
+};
+
 Publisher.prototype.publishAll = function (forceDiscovery) {
   if (!this.client || !this.client.connected) return;
   var db = this.db;
+  var u = this.units();
   var today = new Date().toISOString().slice(0, 10);
+  /* cambiare unità cambia i payload di discovery: vanno ripubblicati */
+  var unitKey = u.system + '|' + u.currency;
+  if (this.lastUnitKey && this.lastUnitKey !== unitKey) forceDiscovery = true;
+  this.lastUnitKey = unitKey;
   var vehicles = db.prepare('SELECT * FROM vehicles WHERE archived = 0 ORDER BY id').all();
   var seen = {};
 
@@ -214,13 +244,13 @@ Publisher.prototype.publishAll = function (forceDiscovery) {
     this.slugById[v.id] = vs;
 
     if (forceDiscovery || !this.announced[vs]) {
-      this.announce(v, vs);
+      this.announce(v, vs, u);
       this.announced[vs] = true;
     }
     var f = DB.list(db, 'fillups', v.id, 'odo ASC, date ASC, id ASC');
     var e = DB.list(db, 'expenses', v.id, 'date ASC, id ASC');
     var r = DB.list(db, 'reminders', v.id, 'id ASC');
-    var payload = statePayload(v, f, e, r, today);
+    var payload = statePayload(v, f, e, r, today, u);
     this.client.publish(stateTopic(vs), JSON.stringify(payload), { retain: true, qos: 1 });
   }
 
@@ -233,9 +263,9 @@ Publisher.prototype.publishAll = function (forceDiscovery) {
   }
 };
 
-Publisher.prototype.announce = function (vehicle, vs) {
+Publisher.prototype.announce = function (vehicle, vs, u) {
   var self = this;
-  SENSORS.forEach(function (s) {
+  sensorList(u).forEach(function (s) {
     var payload = discoveryPayload(vehicle, vs, s, self.opts.version);
     self.client.publish(discoveryTopic(vs, s.key), JSON.stringify(payload), { retain: true, qos: 1 });
   });
@@ -244,7 +274,7 @@ Publisher.prototype.announce = function (vehicle, vs) {
 
 Publisher.prototype.retract = function (vs) {
   var self = this;
-  SENSORS.forEach(function (s) {
+  sensorList().forEach(function (s) {
     self.client.publish(discoveryTopic(vs, s.key), '', { retain: true, qos: 1 });
   });
   self.log('device rimosso: ' + vs);
@@ -282,6 +312,7 @@ module.exports = {
   BASE: BASE,
   STATUS_TOPIC: STATUS_TOPIC,
   SENSORS: SENSORS,
+  sensorList: sensorList,
   slug: slug,
   isoTimestamp: isoTimestamp,
   stateTopic: stateTopic,

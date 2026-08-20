@@ -9,7 +9,16 @@
   var C = window.AutoLogCalc;
   var CH = window.AutoLogCharts;
   var I = window.AutoLogI18n;
+  var U = window.AutoLogUnits;
   var t = I.t;
+
+  /* Impostazioni di unità correnti; il database resta sempre metrico. */
+  var UN = { system: 'metric', currency: 'EUR', symbol: '€', distance: 'km', volume: 'L', consumption: 'km/L' };
+  function uDist(km) { return U.distanceFromKm(km, UN.system); }
+  function uVol(l) { return U.volumeFromLiters(l, UN.system); }
+  function uCons(kml) { return U.consumptionFromKml(kml, UN.system); }
+  function inDist(v) { return U.distanceToKm(v, UN.system); }
+  function inVol(v) { return U.volumeToLiters(v, UN.system); }
 
   /* ---------- preferenze UI (mai dati utente) ---------- */
   var PREF = {
@@ -35,15 +44,22 @@
   /* ---------- formattazione ---------- */
 
   function nfmt(n, d) { return I.num(n, d); }
-  function eur(n, d) { return n === null || n === undefined ? '—' : nfmt(n, d === undefined ? 2 : d) + ' ' + CURRENCY; }
-  function km(n) { return n === null || n === undefined ? '—' : nfmt(n, 0) + ' km'; }
+  function eur(n, d) { return I.money(n, UN.currency, d === undefined ? 2 : d); }
+  function km(n) { return n === null || n === undefined ? '—' : nfmt(uDist(n), 0) + ' ' + UN.distance; }
+  function vol(n) { return n === null || n === undefined ? '—' : nfmt(uVol(n), 2) + ' ' + UN.volume; }
+  function cons(kml) { return kml === null || kml === undefined ? '—' : nfmt(uCons(kml), 2) + ' ' + UN.consumption; }
   function dt(iso) { return I.date(iso); }
-  var CURRENCY = '€';
+  function CUR() { return UN.symbol; }
   function todayISO() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   /* Accetta la virgola decimale italiana nei campi numerici. */
+  function round(n, d) {
+    if (n === null || n === undefined || !isFinite(n)) return '';
+    var f = Math.pow(10, d);
+    return String(Math.round(n * f) / f).replace('.', ',');
+  }
   function numIn(v) {
     if (v === null || v === undefined) return null;
     var s = String(v).trim().replace(/\s/g, '');
@@ -103,6 +119,13 @@
    * poi Accept-Language, poi la lingua del browser, infine la lingua di riserva.
    * Il server conosce l'utente grazie all'header X-Remote-User-Id dell'Ingress.
    */
+  async function loadUnits() {
+    try {
+      UN = await api('api/settings/units');
+    } catch (e) { /* si resta sui default metrici */ }
+    translateStatic();
+  }
+
   async function loadLocale() {
     var fallback = I.negotiate(navigator.language + ',' + (navigator.languages || []).join(',')) || I.FALLBACK;
     try {
@@ -134,11 +157,23 @@
     $$('[data-i18n-placeholder]').forEach(function (el) {
       el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
     });
-    /* le etichette con valuta o unità hanno bisogno dei parametri */
-    var withCur = { 'f-cost': 'field.totalCost', 'f-price': 'field.pricePerLiter', 'e-cost': 'field.cost' };
-    Object.keys(withCur).forEach(function (id) {
+    /* Etichette che dipendono da valuta o unità: vanno tradotte con i parametri,
+       dopo il passaggio generico qui sopra che le lascerebbe con i segnaposto. */
+    var params = {
+      'f-cost': ['field.totalCost', { cur: CUR() }],
+      'e-cost': ['field.cost', { cur: CUR() }],
+      'f-price': ['field.pricePerLiter', { cur: CUR(), unit: UN.volume }],
+      'f-odo': ['field.odo', { unit: UN.distance }],
+      'e-odo': ['field.odo', { unit: UN.distance }],
+      'f-liters': ['field.liters', { unit: UN.volume }],
+      'v-tank': ['field.tank', { unit: UN.volume }],
+      'v-start': ['field.startOdo', { unit: UN.distance }],
+      'r-due-odo': ['field.dueOdo', { unit: UN.distance }],
+      'r-every-km': ['field.everyKm', { unit: UN.distance }]
+    };
+    Object.keys(params).forEach(function (id) {
       var lab = document.querySelector('label[for="' + id + '"]');
-      if (lab) lab.textContent = t(withCur[id], { cur: CURRENCY });
+      if (lab) lab.textContent = t(params[id][0], params[id][1]);
     });
   }
 
@@ -317,15 +352,19 @@
         (sub ? '<div class="sub">' + esc(sub) + '</div>' : '');
       stats.appendChild(d);
     }
-    stat(t('stat.consumption'), s.avg_kml ? nfmt(s.avg_kml, 2) + ' km/L' : '—',
-         s.avg_l100 ? nfmt(s.avg_l100, 2) + ' L/100 km' : t('stat.consumption.hint'));
-    stat(t('stat.costkm'), s.eur_km_total ? nfmt(s.eur_km_total, 3) + ' ' + CURRENCY + '/km' : '—',
-         s.eur_km_fuel ? t('stat.costkm.fuel', { v: nfmt(s.eur_km_fuel, 3) + ' ' + CURRENCY + '/km' }) : '');
+    var sec = U.secondaryConsumption(s.avg_l100, UN.system);
+    var perDist = function (v) { return nfmt(U.costPerDistanceFromKm(v, UN.system), 3) + ' ' + CUR() + '/' + UN.distance; };
+    var perVol = function (v) { return nfmt(U.pricePerVolumeFromLiter(v, UN.system), 3) + ' ' + CUR() + '/' + UN.volume; };
+
+    stat(t('stat.consumption'), s.avg_kml ? cons(s.avg_kml) : '—',
+         sec ? nfmt(sec.value, 2) + ' ' + sec.unit : t('stat.consumption.hint'));
+    stat(t('stat.costkm', { unit: UN.distance }), s.eur_km_total ? perDist(s.eur_km_total) : '—',
+         s.eur_km_fuel ? t('stat.costkm.fuel', { v: perDist(s.eur_km_fuel) }) : '');
     stat(t('stat.distance'), km(s.total_km),
-         s.km_month ? t('stat.distance.month', { v: nfmt(s.km_month, 0) }) : '');
+         s.km_month ? t('stat.distance.month', { v: nfmt(uDist(s.km_month), 0), unit: UN.distance }) : '');
     stat(t('stat.spend'), eur(s.total_cost), t('stat.spend.fuel', { v: eur(s.fuel_cost) }));
-    stat(t('stat.lastprice'), s.last_price_l ? nfmt(s.last_price_l, 3) + ' ' + CURRENCY + '/L' : '—',
-         s.avg_price_l ? t('stat.avgprice', { v: nfmt(s.avg_price_l, 3) + ' ' + CURRENCY + '/L' }) : '');
+    stat(t('stat.lastprice'), s.last_price_l ? perVol(s.last_price_l) : '—',
+         s.avg_price_l ? t('stat.avgprice', { v: perVol(s.avg_price_l) }) : '');
     stat(t('stat.fillups'), String(s.count_fillups || 0),
          s.last_fillup_date ? t('stat.lastfillup', { v: dt(s.last_fillup_date) }) : '');
     main.appendChild(stats);
@@ -343,11 +382,11 @@
     var pts = consumptionPoints();
     var chartBox = document.createElement('div');
     CH.lineChart(chartBox, pts, {
-      unit: 'km/L', decimals: 2, average: s.avg_kml,
+      unit: UN.consumption, decimals: 2, average: uCons(s.avg_kml),
       averageLabel: t('chart.average'), seriesName: t('chart.series.consumption'),
       emptyMessage: t('chart.empty.consumption')
     });
-    main.appendChild(card(t('chart.consumption'), chartBox));
+    main.appendChild(card(t('chart.consumption', { unit: UN.consumption }), chartBox));
 
     /* ultimi rifornimenti */
     var last = state.fillups.slice(0, 5);
@@ -363,7 +402,11 @@
       .filter(function (f) { return f.kml !== null && f.kml !== undefined; })
       .slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.odo - b.odo; })
       .map(function (f) {
-        return { label: dt(f.date), value: f.kml, tip: dt(f.date) + ' · ' + km(f.odo) + ' · ' + nfmt(f.l100, 2) + ' L/100 km' };
+        var sec2 = U.secondaryConsumption(f.l100, UN.system);
+        return {
+          label: dt(f.date), value: uCons(f.kml),
+          tip: dt(f.date) + ' · ' + km(f.odo) + (sec2 ? ' · ' + nfmt(sec2.value, 2) + ' ' + sec2.unit : '')
+        };
       });
   }
 
@@ -375,15 +418,16 @@
     b.type = 'button';
     b.className = 'row-btn';
     var badge = f.kml
-      ? '<span class="badge ok">' + nfmt(f.kml, 2) + ' km/l</span>'
+      ? '<span class="badge ok">' + esc(cons(f.kml)) + '</span>'
       : '<span class="badge">' + esc(t(f.full ? 'badge.full' : 'badge.partial')) + '</span>';
     var warn = f.odo_warning ? ' <span class="badge danger">' + esc(t('badge.odoWarning')) + '</span>' : '';
     var missed = f.missed ? ' <span class="badge warn">' + esc(t('badge.chainBroken')) + '</span>' : '';
     b.innerHTML =
       '<span class="row-main">' +
         '<span class="row-title">' + esc(dt(f.date)) + ' · ' + esc(km(f.odo)) + '</span>' +
-        '<span class="row-sub">' + esc(nfmt(f.liters, 2)) + ' L · ' + esc(eur(f.total_cost)) + ' · ' +
-        esc(nfmt(f.price_l, 3)) + ' ' + CURRENCY + '/L' + (f.station ? ' · ' + esc(f.station) : '') + '</span>' +
+        '<span class="row-sub">' + esc(vol(f.liters)) + ' · ' + esc(eur(f.total_cost)) + ' · ' +
+        esc(nfmt(U.pricePerVolumeFromLiter(f.price_l, UN.system), 3) + ' ' + CUR() + '/' + UN.volume) +
+        (f.station ? ' · ' + esc(f.station) : '') + '</span>' +
       '</span>' +
       '<span class="row-side">' + badge + warn + missed + '</span>';
     b.onclick = function () { openFillup(f); };
@@ -457,7 +501,7 @@
     var parts = [];
     if (r.due_date) parts.push(t('reminder.byDate', { v: dt(r.due_date) }));
     if (r.due_odo) parts.push(t('reminder.byOdo', { v: km(r.due_odo) }));
-    if (r.km_left !== null && r.km_left !== undefined) parts.push(t('reminder.kmLeft', { v: nfmt(r.km_left, 0) }));
+    if (r.km_left !== null && r.km_left !== undefined) parts.push(t('reminder.kmLeft', { v: nfmt(uDist(r.km_left), 0), unit: UN.distance }));
     if (r.days_left !== null && r.days_left !== undefined) parts.push(t('reminder.daysLeft', { v: nfmt(Math.round(r.days_left), 0) }));
     b.innerHTML =
       '<span class="row-main">' +
@@ -515,37 +559,37 @@
 
     var b1 = document.createElement('div');
     CH.lineChart(b1, consumptionPoints(), {
-      unit: 'km/L', decimals: 2, average: s.avg_kml,
+      unit: UN.consumption, decimals: 2, average: uCons(s.avg_kml),
       averageLabel: t('chart.average'), seriesName: t('chart.series.consumption'),
       emptyMessage: t('chart.empty.consumption')
     });
-    main.appendChild(card(t('chart.consumptionOverTime'), b1));
+    main.appendChild(card(t('chart.consumptionOverTime', { unit: UN.consumption }), b1));
 
     var pricePts = state.fillups
       .filter(function (f) { return f.price_l; })
       .slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.odo - b.odo; })
       .map(function (f) {
-        return { label: dt(f.date), value: f.price_l, tip: dt(f.date) + (f.station ? ' · ' + f.station : '') };
+        return { label: dt(f.date), value: U.pricePerVolumeFromLiter(f.price_l, UN.system), tip: dt(f.date) + (f.station ? ' · ' + f.station : '') };
       });
     var b2 = document.createElement('div');
     CH.lineChart(b2, pricePts, {
-      unit: CURRENCY + '/L', decimals: 3, average: s.avg_price_l,
-      averageLabel: t('chart.averagePrice'), seriesName: t('chart.price'),
+      unit: CUR() + '/' + UN.volume, decimals: 3, average: U.pricePerVolumeFromLiter(s.avg_price_l, UN.system),
+      averageLabel: t('chart.averagePrice'), seriesName: t('chart.price', { cur: CUR(), unit: UN.volume }),
       emptyMessage: t('chart.empty.price')
     });
-    main.appendChild(card(t('chart.price'), b2));
+    main.appendChild(card(t('chart.price', { cur: CUR(), unit: UN.volume }), b2));
 
     var b3 = document.createElement('div');
     CH.barsHorizontal(b3, (s.by_category || []).map(function (c) { return { label: c.category, value: c.cost }; }), {
-      unit: CURRENCY, ariaLabel: t('chart.byCategory'), emptyMessage: t('chart.empty.category')
+      currency: UN.currency, ariaLabel: t('chart.byCategory', { cur: CUR() }), emptyMessage: t('chart.empty.category')
     });
-    main.appendChild(card(t('chart.byCategory'), b3));
+    main.appendChild(card(t('chart.byCategory', { cur: CUR() }), b3));
 
     var b4 = document.createElement('div');
     CH.barsStacked(b4, (s.monthly || []).map(function (m) { return { label: m.month, a: m.fuel, b: m.other }; }), {
-      ariaLabel: t('chart.monthly'), emptyMessage: t('chart.empty.monthly')
+      currency: UN.currency, ariaLabel: t('chart.monthly', { cur: CUR() }), emptyMessage: t('chart.empty.monthly')
     });
-    main.appendChild(card(t('chart.monthly'), b4));
+    main.appendChild(card(t('chart.monthly', { cur: CUR() }), b4));
   };
 
   /* --- Veicoli --- */
@@ -610,6 +654,37 @@
         await render();
       } catch (e) { toast(e.message); }
     };
+
+    /* unità e valuta */
+    var un = document.createElement('div');
+    un.innerHTML =
+      '<p class="muted">' + esc(t('data.units.hint')) + '</p>' +
+      '<div class="grid2">' +
+      '<p class="field"><label for="unit-system">' + esc(t('data.units.system')) + '</label><select id="unit-system">' +
+      (UN.systems || U.SYSTEMS).map(function (sys) {
+        return '<option value="' + sys + '"' + (UN.system === sys ? ' selected' : '') + '>' +
+          esc(t('units.' + sys)) + '</option>';
+      }).join('') + '</select></p>' +
+      '<p class="field"><label for="unit-currency">' + esc(t('data.units.currency')) + '</label><select id="unit-currency">' +
+      (UN.currencies || Object.keys(U.CURRENCIES)).map(function (c) {
+        return '<option value="' + c + '"' + (UN.currency === c ? ' selected' : '') + '>' +
+          esc(c + ' ' + U.currencySymbol(c)) + '</option>';
+      }).join('') + '</select></p>' +
+      '</div>';
+    main.appendChild(card(t('data.units'), un));
+
+    async function saveUnits() {
+      try {
+        UN = await api('api/settings/units', { method: 'PUT', body: {
+          system: $('#unit-system', un).value,
+          currency: $('#unit-currency', un).value
+        } });
+        translateStatic();
+        await render();
+      } catch (e) { toast(e.message); }
+    }
+    $('#unit-system', un).onchange = saveUnits;
+    $('#unit-currency', un).onchange = saveUnits;
 
     /* import CSV */
     var imp = document.createElement('div');
@@ -775,19 +850,22 @@
   function fillupWarnings() {
     var w = [];
     var v = currentVehicle();
-    var odo = numIn(getVal('f-odo'));
-    var liters = numIn(getVal('f-liters'));
-    var price = numIn(getVal('f-price'));
+    var odo = inDist(numIn(getVal('f-odo')));
+    var liters = inVol(numIn(getVal('f-liters')));
+    var price = U.pricePerVolumeToLiter(numIn(getVal('f-price')), UN.system);
     var date = getVal('f-date');
     var last = lastOdo();
     if (odo !== null && last !== null && odo <= last && (!editingFillup || editingFillup.odo !== odo)) {
-      w.push(t('warn.odoNotHigher', { v: nfmt(odo, 0), last: nfmt(last, 0) }));
+      w.push(t('warn.odoNotHigher', { v: nfmt(uDist(odo), 0), last: nfmt(uDist(last), 0) }));
     }
     if (liters !== null && v && v.tank_l && liters > v.tank_l * 1.15) {
-      w.push(t('warn.tooManyLiters', { v: nfmt(liters, 2), tank: nfmt(v.tank_l, 0) }));
+      w.push(t('warn.tooManyLiters', { v: vol(liters), tank: vol(v.tank_l) }));
     }
     if (price !== null && (price < 0.5 || price > 4)) {
-      w.push(t('warn.priceRange', { min: nfmt(0.5, 2) + ' ' + CURRENCY + '/L', max: nfmt(4, 2) + ' ' + CURRENCY + '/L' }));
+      w.push(t('warn.priceRange', {
+        min: nfmt(U.pricePerVolumeFromLiter(0.5, UN.system), 2) + ' ' + CUR() + '/' + UN.volume,
+        max: nfmt(U.pricePerVolumeFromLiter(4, UN.system), 2) + ' ' + CUR() + '/' + UN.volume
+      }));
     }
     if (date && date > todayISO()) w.push(t('warn.futureDate'));
     var ul = $('#f-warnings');
@@ -811,10 +889,10 @@
     var v = currentVehicle();
     $('#fillup-title').textContent = t(f ? 'title.editFillup' : 'title.newFillup');
     setVal('f-date', f ? f.date : todayISO());
-    setVal('f-odo', f ? f.odo : (lastOdo() !== null ? lastOdo() : ''));
-    setVal('f-liters', f ? f.liters : '');
+    setVal('f-odo', f ? round(uDist(f.odo), 1) : (lastOdo() !== null ? round(uDist(lastOdo()), 1) : ''));
+    setVal('f-liters', f ? round(uVol(f.liters), 3) : '');
     setVal('f-cost', f ? f.total_cost : '');
-    setVal('f-price', f ? f.price_l : '');
+    setVal('f-price', f ? round(U.pricePerVolumeFromLiter(f.price_l, UN.system), 3) : '');
     setVal('f-full', f ? f.full : 1);
     setVal('f-missed', f ? f.missed : 0);
     setVal('f-fuel', f ? f.fuel_type : (v ? v.fuel_type : ''));
@@ -831,10 +909,10 @@
     var body = {
       vehicle_id: state.vehicleId,
       date: getVal('f-date'),
-      odo: numIn(getVal('f-odo')),
-      liters: numIn(getVal('f-liters')),
+      odo: inDist(numIn(getVal('f-odo'))),
+      liters: inVol(numIn(getVal('f-liters'))),
       total_cost: numIn(getVal('f-cost')),
-      price_l: numIn(getVal('f-price')),
+      price_l: U.pricePerVolumeToLiter(numIn(getVal('f-price')), UN.system),
       full: getVal('f-full'),
       missed: getVal('f-missed'),
       fuel_type: getVal('f-fuel'),
@@ -870,7 +948,7 @@
     editingExpense = e || null;
     $('#expense-title').textContent = t(e ? 'title.editExpense' : 'title.newExpense');
     setVal('e-date', e ? e.date : todayISO());
-    setVal('e-odo', e ? e.odo : (lastOdo() !== null ? lastOdo() : ''));
+    setVal('e-odo', e ? round(uDist(e.odo), 1) : (lastOdo() !== null ? round(uDist(lastOdo()), 1) : ''));
     setVal('e-category', e ? e.category : t('category.maintenance'));
     setVal('e-cost', e ? e.cost : '');
     setVal('e-description', e ? e.description : '');
@@ -885,7 +963,7 @@
     var body = {
       vehicle_id: state.vehicleId,
       date: getVal('e-date'),
-      odo: numIn(getVal('e-odo')),
+      odo: inDist(numIn(getVal('e-odo'))),
       category: getVal('e-category') || t('category.other'),
       cost: numIn(getVal('e-cost')),
       description: getVal('e-description'),
@@ -921,9 +999,9 @@
     setVal('r-title', r ? r.title : '');
     setVal('r-category', r ? r.category : t('category.maintenance'));
     setVal('r-due-date', r && r.due_date ? String(r.due_date).slice(0, 10) : '');
-    setVal('r-due-odo', r ? r.due_odo : '');
+    setVal('r-due-odo', r ? round(uDist(r.due_odo), 1) : '');
     setVal('r-every-months', r ? r.every_months : '');
-    setVal('r-every-km', r ? r.every_km : '');
+    setVal('r-every-km', r ? round(uDist(r.every_km), 1) : '');
     setVal('r-notes', r ? r.notes : '');
     $('#dlg-reminder [data-action="delete"]').hidden = !r;
     $('#dlg-reminder').showModal();
@@ -936,9 +1014,9 @@
       title: getVal('r-title'),
       category: getVal('r-category'),
       due_date: getVal('r-due-date') || null,
-      due_odo: numIn(getVal('r-due-odo')),
+      due_odo: inDist(numIn(getVal('r-due-odo'))),
       every_months: numIn(getVal('r-every-months')),
-      every_km: numIn(getVal('r-every-km')),
+      every_km: inDist(numIn(getVal('r-every-km'))),
       notes: getVal('r-notes')
     };
     if (!body.title) return toast(t('msg.requiredTitle'));
@@ -973,8 +1051,8 @@
     setVal('v-year', v ? v.year : '');
     setVal('v-plate', v ? v.plate : '');
     setVal('v-fuel', v ? v.fuel_type : t('fuel.petrol'));
-    setVal('v-tank', v ? v.tank_l : '');
-    setVal('v-start', v ? v.start_odo : '');
+    setVal('v-tank', v ? round(uVol(v.tank_l), 2) : '');
+    setVal('v-start', v ? round(uDist(v.start_odo), 1) : '');
     setVal('v-archived', v ? v.archived : 0);
     setVal('v-notes', v ? v.notes : '');
     $('#dlg-vehicle [data-action="delete"]').hidden = !v;
@@ -990,8 +1068,8 @@
       year: numIn(getVal('v-year')),
       plate: getVal('v-plate'),
       fuel_type: getVal('v-fuel'),
-      tank_l: numIn(getVal('v-tank')),
-      start_odo: numIn(getVal('v-start')) || 0,
+      tank_l: inVol(numIn(getVal('v-tank'))),
+      start_odo: inDist(numIn(getVal('v-start'))) || 0,
       archived: getVal('v-archived'),
       notes: getVal('v-notes')
     };
@@ -1106,6 +1184,7 @@
       }
       showApp();
       await loadLocale();
+      await loadUnits();
       await loadVehicles();
       await loadVehicleData();
       var savedView = PREF.get('view', 'riepilogo');

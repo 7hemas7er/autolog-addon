@@ -38,10 +38,10 @@
 
       'stat.consumption': 'Consumo medio',
       'stat.consumption.hint': 'servono due pieni completi',
-      'stat.costkm': 'Costo al km',
+      'stat.costkm': 'Costo per {unit}',
       'stat.costkm.fuel': 'solo carburante {v}',
-      'stat.distance': 'Km totali',
-      'stat.distance.month': '{v} km/mese',
+      'stat.distance': 'Distanza totale',
+      'stat.distance.month': '{v} {unit}/mese',
       'stat.spend': 'Spesa totale',
       'stat.spend.fuel': 'carburante {v}',
       'stat.lastprice': 'Ultimo prezzo',
@@ -58,11 +58,11 @@
       'section.done': 'Completati',
       'section.vehicles': 'Veicoli ({n})',
 
-      'chart.consumption': 'Consumo (km/L)',
-      'chart.consumptionOverTime': 'Consumo nel tempo (km/L)',
-      'chart.price': 'Prezzo al litro (€/L)',
-      'chart.byCategory': 'Spese per categoria (€)',
-      'chart.monthly': 'Costi mensili (€)',
+      'chart.consumption': 'Consumo ({unit})',
+      'chart.consumptionOverTime': 'Consumo nel tempo ({unit})',
+      'chart.price': 'Prezzo ({cur}/{unit})',
+      'chart.byCategory': 'Spese per categoria ({cur})',
+      'chart.monthly': 'Costi mensili ({cur})',
       'chart.series.consumption': 'Consumo',
       'chart.series.fuel': 'Carburante',
       'chart.series.other': 'Altre spese',
@@ -94,7 +94,7 @@
 
       'reminder.byDate': 'entro {v}',
       'reminder.byOdo': 'a {v}',
-      'reminder.kmLeft': '{v} km rimanenti',
+      'reminder.kmLeft': '{v} {unit} rimanenti',
       'reminder.daysLeft': '{v} giorni',
 
       'title.newFillup': 'Nuovo rifornimento',
@@ -108,10 +108,10 @@
       'title.importPreview': 'Anteprima import',
 
       'field.date': 'Data',
-      'field.odo': 'Chilometri',
-      'field.liters': 'Litri',
+      'field.odo': 'Chilometraggio ({unit})',
+      'field.liters': 'Volume ({unit})',
       'field.totalCost': 'Costo totale ({cur})',
-      'field.pricePerLiter': 'Prezzo/litro ({cur}/L)',
+      'field.pricePerLiter': 'Prezzo ({cur}/{unit})',
       'field.fuelType': 'Carburante',
       'field.full': 'Pieno completo',
       'field.missed': 'Rifornimento precedente non registrato',
@@ -124,16 +124,16 @@
       'field.vendor': 'Officina / fornitore',
       'field.title': 'Titolo',
       'field.dueDate': 'Scadenza (data)',
-      'field.dueOdo': 'Scadenza (km)',
+      'field.dueOdo': 'Scadenza ({unit})',
       'field.everyMonths': 'Ricorre ogni (mesi)',
-      'field.everyKm': 'Ricorre ogni (km)',
+      'field.everyKm': 'Ricorre ogni ({unit})',
       'field.name': 'Nome',
       'field.make': 'Marca',
       'field.model': 'Modello',
       'field.year': 'Anno',
       'field.plate': 'Targa',
-      'field.tank': 'Serbatoio (L)',
-      'field.startOdo': 'Km iniziali',
+      'field.tank': 'Serbatoio ({unit})',
+      'field.startOdo': 'Chilometraggio iniziale ({unit})',
       'field.archived': 'Archiviato',
 
       'action.save': 'Salva',
@@ -164,6 +164,13 @@
       'data.restore.replace': 'Sostituisci i dati esistenti',
       'data.info': 'Informazioni',
       'data.info.unavailable': 'Informazioni non disponibili.',
+      'data.units': 'Unità di misura',
+      'data.units.hint': 'Valgono per tutta l\'istanza e determinano anche le unità dei sensori in Home Assistant. Il database resta sempre metrico.',
+      'data.units.system': 'Sistema',
+      'data.units.currency': 'Valuta',
+      'units.metric': 'Metrico (km, litri)',
+      'units.us': 'Imperiale USA (miglia, galloni US)',
+      'units.uk': 'Imperiale UK (miglia, galloni imperiali)',
       'data.language': 'Lingua',
       'data.language.hint': 'La scelta vale per il tuo utente Home Assistant, su tutti i dispositivi.',
       'data.language.auto': 'Automatica ({v})',
@@ -202,8 +209,8 @@
       'confirm.deleteVehicle': 'Eliminare "{name}" con tutti i suoi rifornimenti, spese e promemoria?',
       'confirm.replace': 'Sostituire tutti i dati esistenti con il backup? L\'operazione non è reversibile.',
 
-      'warn.odoNotHigher': 'I chilometri ({v}) non superano l\'ultimo valore registrato ({last}).',
-      'warn.tooManyLiters': 'Litri ({v}) oltre la capacità del serbatoio ({tank} L).',
+      'warn.odoNotHigher': 'Il chilometraggio ({v}) non supera l\'ultimo valore registrato ({last}).',
+      'warn.tooManyLiters': 'Volume ({v}) oltre la capacità del serbatoio ({tank}).',
       'warn.priceRange': 'Prezzo al litro fuori dall\'intervallo plausibile {min}–{max}.',
       'warn.futureDate': 'La data è nel futuro.',
 
@@ -252,10 +259,10 @@
 
       'stat.consumption': 'Average consumption',
       'stat.consumption.hint': 'two full tanks are needed',
-      'stat.costkm': 'Cost per km',
+      'stat.costkm': 'Cost per {unit}',
       'stat.costkm.fuel': 'fuel only {v}',
       'stat.distance': 'Total distance',
-      'stat.distance.month': '{v} km/month',
+      'stat.distance.month': '{v} {unit}/month',
       'stat.spend': 'Total spend',
       'stat.spend.fuel': 'fuel {v}',
       'stat.lastprice': 'Last price',
@@ -272,11 +279,11 @@
       'section.done': 'Completed',
       'section.vehicles': 'Vehicles ({n})',
 
-      'chart.consumption': 'Consumption (km/L)',
-      'chart.consumptionOverTime': 'Consumption over time (km/L)',
-      'chart.price': 'Price per litre (€/L)',
-      'chart.byCategory': 'Spending by category (€)',
-      'chart.monthly': 'Monthly costs (€)',
+      'chart.consumption': 'Consumption ({unit})',
+      'chart.consumptionOverTime': 'Consumption over time ({unit})',
+      'chart.price': 'Price ({cur}/{unit})',
+      'chart.byCategory': 'Spending by category ({cur})',
+      'chart.monthly': 'Monthly costs ({cur})',
       'chart.series.consumption': 'Consumption',
       'chart.series.fuel': 'Fuel',
       'chart.series.other': 'Other expenses',
@@ -308,7 +315,7 @@
 
       'reminder.byDate': 'by {v}',
       'reminder.byOdo': 'at {v}',
-      'reminder.kmLeft': '{v} km left',
+      'reminder.kmLeft': '{v} {unit} left',
       'reminder.daysLeft': '{v} days',
 
       'title.newFillup': 'New fuel-up',
@@ -322,10 +329,10 @@
       'title.importPreview': 'Import preview',
 
       'field.date': 'Date',
-      'field.odo': 'Odometer',
-      'field.liters': 'Litres',
+      'field.odo': 'Odometer ({unit})',
+      'field.liters': 'Volume ({unit})',
       'field.totalCost': 'Total cost ({cur})',
-      'field.pricePerLiter': 'Price per litre ({cur}/L)',
+      'field.pricePerLiter': 'Price ({cur}/{unit})',
       'field.fuelType': 'Fuel',
       'field.full': 'Filled up completely',
       'field.missed': 'Previous fuel-up not recorded',
@@ -338,16 +345,16 @@
       'field.vendor': 'Garage / vendor',
       'field.title': 'Title',
       'field.dueDate': 'Due (date)',
-      'field.dueOdo': 'Due (km)',
+      'field.dueOdo': 'Due ({unit})',
       'field.everyMonths': 'Repeats every (months)',
-      'field.everyKm': 'Repeats every (km)',
+      'field.everyKm': 'Repeats every ({unit})',
       'field.name': 'Name',
       'field.make': 'Make',
       'field.model': 'Model',
       'field.year': 'Year',
       'field.plate': 'Plate',
-      'field.tank': 'Tank (L)',
-      'field.startOdo': 'Starting odometer',
+      'field.tank': 'Tank ({unit})',
+      'field.startOdo': 'Starting odometer ({unit})',
       'field.archived': 'Archived',
 
       'action.save': 'Save',
@@ -378,6 +385,13 @@
       'data.restore.replace': 'Replace existing data',
       'data.info': 'Information',
       'data.info.unavailable': 'Information unavailable.',
+      'data.units': 'Units',
+      'data.units.hint': 'These apply to the whole instance and also drive the units of the Home Assistant sensors. The database always stays metric.',
+      'data.units.system': 'System',
+      'data.units.currency': 'Currency',
+      'units.metric': 'Metric (km, litres)',
+      'units.us': 'US customary (miles, US gallons)',
+      'units.uk': 'Imperial UK (miles, imperial gallons)',
       'data.language': 'Language',
       'data.language.hint': 'The choice applies to your Home Assistant user, on every device.',
       'data.language.auto': 'Automatic ({v})',
@@ -417,7 +431,7 @@
       'confirm.replace': 'Replace all existing data with the backup? This cannot be undone.',
 
       'warn.odoNotHigher': 'The odometer reading ({v}) is not higher than the last recorded one ({last}).',
-      'warn.tooManyLiters': 'Litres ({v}) exceed the tank capacity ({tank} L).',
+      'warn.tooManyLiters': 'Volume ({v}) exceeds the tank capacity ({tank}).',
       'warn.priceRange': 'Price per litre outside the plausible range {min}–{max}.',
       'warn.futureDate': 'The date is in the future.',
 
@@ -499,6 +513,25 @@
     });
   }
 
+  /*
+   * Importi: la posizione del simbolo dipende dalla lingua, non dalla valuta
+   * ("$771.90" in inglese, "771,90 $" in italiano). Ci pensa Intl.
+   */
+  function money(n, currencyCode, decimals) {
+    if (n === null || n === undefined || n === '' || !isFinite(n)) return '—';
+    var d = decimals === undefined ? 2 : decimals;
+    try {
+      return Number(n).toLocaleString(intlTag(), {
+        style: 'currency', currency: currencyCode || 'EUR',
+        /* narrowSymbol evita "US$" al posto di "$" fuori dagli Stati Uniti */
+        currencyDisplay: 'narrowSymbol',
+        minimumFractionDigits: d, maximumFractionDigits: d
+      });
+    } catch (e) {
+      return num(n, d) + ' ' + (currencyCode || '');
+    }
+  }
+
   function date(iso) {
     if (!iso) return '';
     var d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');
@@ -528,6 +561,7 @@
     intlTag: intlTag,
     t: t,
     num: num,
+    money: money,
     date: date,
     month: month
   };

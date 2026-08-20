@@ -1,0 +1,56 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.x needs --experimental-sqlite, 24.x does not: both are supported
+        # and the server re-executes itself with the flag when required.
+        node: ['22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: No production dependencies
+        working-directory: autolog
+        run: |
+          if [ -d node_modules ] || grep -q '"dependencies"' package.json; then
+            echo "AutoLog must ship with zero npm dependencies"; exit 1
+          fi
+
+      - name: Tests
+        working-directory: autolog
+        run: npm test
+
+  build:
+    name: Build the add-on image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: docker build -t autolog:ci autolog/
+      - name: Start it and check it answers
+        run: |
+          docker run -d --name autolog-ci -p 8099:8099 autolog:ci
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8099/api/auth/status > /dev/null; then
+              echo "up after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "the add-on did not answer in time"; docker logs autolog-ci; exit 1
+      - name: Logs on failure
+        if: failure()
+        run: docker logs autolog-ci || true

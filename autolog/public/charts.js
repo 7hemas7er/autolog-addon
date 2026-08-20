@@ -78,6 +78,15 @@
     return p;
   }
 
+  /*
+   * Quante cifre servono perché due tacche consecutive non appaiano uguali.
+   * Senza questo, un asse fra 1,830 e 1,911 mostrava "1,9 1,9 1,9 1,8".
+   */
+  function tickDecimals(step) {
+    if (!isFinite(step) || step <= 0) return 0;
+    return Math.min(4, Math.max(0, Math.ceil(-Math.log10(step))));
+  }
+
   function niceTicks(min, max, count) {
     if (min === max) { min -= 1; max += 1; }
     var span = max - min;
@@ -129,6 +138,7 @@
     var lo = min - pad, hi = max + pad;
     var ticks = niceTicks(lo, hi, 4);
     lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+    var tickDec = ticks.length > 1 ? tickDecimals(Math.abs(ticks[1] - ticks[0])) : dec;
 
     var svg = el('svg', {
       viewBox: '0 0 ' + W + ' ' + HGT, class: 'chart',
@@ -145,7 +155,7 @@
       svg.appendChild(el('line', { x1: m.l, y1: y, x2: m.l + iw, y2: y, stroke: 'var(--grid)', 'stroke-width': 1 }));
       svg.appendChild(el('text', {
         x: m.l - 8, y: y + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--text-2)'
-      }, fmt(t, dec >= 2 ? 1 : dec)));
+      }, fmt(t, tickDec)));
     });
 
     if (opts.average !== null && opts.average !== undefined) {
@@ -211,6 +221,10 @@
 
   function barsHorizontal(container, items, opts) {
     opts = opts || {};
+    var asMoney = function (v, d) {
+      var I = i18n();
+      return (opts.currency && I) ? I.money(v, opts.currency, d) : fmt(v, d) + (opts.unit ? ' ' + opts.unit : '');
+    };
     container.textContent = '';
     if (!items || !items.length) {
       container.appendChild(emptyState(opts.emptyMessage || t('chart.empty.generic')));
@@ -236,14 +250,14 @@
       var rect = el('rect', {
         x: m.l, y: y, width: w, height: h, rx: 4, fill: 'var(--serie1)', style: 'cursor:pointer'
       });
-      rect.appendChild(el('title', {}, it.label + ': ' + fmt(it.value, 2) + ' ' + (opts.unit || '')));
+      rect.appendChild(el('title', {}, it.label + ': ' + asMoney(it.value, 2)));
       bindTip(rect, function () {
-        return '<b>' + it.label + '</b><br>' + fmt(it.value, 2) + ' ' + (opts.unit || '');
+        return '<b>' + it.label + '</b><br>' + asMoney(it.value, 2);
       });
       svg.appendChild(rect);
       svg.appendChild(el('text', {
         x: m.l + w + 8, y: y + h / 2 + 4, 'font-size': 12, fill: 'var(--text-2)'
-      }, fmt(it.value, 0) + ' ' + (opts.unit || '')));
+      }, asMoney(it.value, 0)));
     });
 
     container.appendChild(svg);
@@ -253,6 +267,10 @@
 
   function barsStacked(container, rows, opts) {
     opts = opts || {};
+    var asMoney = function (v, d) {
+      var I = i18n();
+      return (opts.currency && I) ? I.money(v, opts.currency, d) : fmt(v, d);
+    };
     container.textContent = '';
     if (!rows || !rows.length) {
       container.appendChild(emptyState(opts.emptyMessage || t('chart.empty.generic')));
@@ -289,20 +307,20 @@
       if (a > 0) {
         var r1 = el('rect', { x: x, y: ya, width: bw, height: Math.max(1, m.t + ih - ya),
           rx: b > 0 ? 0 : 4, fill: 'var(--serie1)', style: 'cursor:pointer' });
-        r1.appendChild(el('title', {}, shortMonth(r.label) + ' — ' + t('chart.series.fuel') + ': ' + fmt(a, 2)));
+        r1.appendChild(el('title', {}, shortMonth(r.label) + ' — ' + t('chart.series.fuel') + ': ' + asMoney(a, 2)));
         bindTip(r1, function () {
-          return '<b>' + shortMonth(r.label) + '</b><br>' + t('chart.series.fuel') + ': ' + fmt(a, 2) +
-                 '<br>' + t('chart.series.other') + ': ' + fmt(b, 2);
+          return '<b>' + shortMonth(r.label) + '</b><br>' + t('chart.series.fuel') + ': ' + asMoney(a, 2) +
+                 '<br>' + t('chart.series.other') + ': ' + asMoney(b, 2);
         });
         svg.appendChild(r1);
       }
       if (b > 0) {
         var h2 = Math.max(1, ya - yb - gap);
         var r2 = el('rect', { x: x, y: yb, width: bw, height: h2, rx: 4, fill: 'var(--serie2)', style: 'cursor:pointer' });
-        r2.appendChild(el('title', {}, shortMonth(r.label) + ' — ' + t('chart.series.other') + ': ' + fmt(b, 2)));
+        r2.appendChild(el('title', {}, shortMonth(r.label) + ' — ' + t('chart.series.other') + ': ' + asMoney(b, 2)));
         bindTip(r2, function () {
-          return '<b>' + shortMonth(r.label) + '</b><br>' + t('chart.series.fuel') + ': ' + fmt(a, 2) +
-                 '<br>' + t('chart.series.other') + ': ' + fmt(b, 2);
+          return '<b>' + shortMonth(r.label) + '</b><br>' + t('chart.series.fuel') + ': ' + asMoney(a, 2) +
+                 '<br>' + t('chart.series.other') + ': ' + asMoney(b, 2);
         });
         svg.appendChild(r2);
       }

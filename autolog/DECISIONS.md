@@ -168,3 +168,26 @@ URLs relative).
 - **MQTT sensor names are not localised.** The name feeds Home Assistant's
   entity naming, so changing it would rename existing entities and break their
   recorded history. Localising them would need a separate, opt-in setting.
+
+## Units
+
+- **The database is always metric.** Kilometres, litres and raw amounts,
+  whatever the user has selected. Conversion happens on the way out (screen and
+  MQTT) and on the way back in (forms), never in storage. Switching units
+  therefore cannot rewrite or corrupt a single record, and `calc.js` never has
+  to know a unit system exists.
+- **Units are instance-wide, language is per user.** Language is cosmetic, so
+  two people can differ. Units drive the `unit_of_measurement` of the Home
+  Assistant sensors, and one sensor cannot carry two units, so they must be a
+  single setting for the whole instance.
+- **Imperial drops the L/100 km sensor** rather than publishing a metric figure
+  under an imperial system. MPG also keeps the same direction as km/L (higher is
+  better), unlike L/100 km, so the summary tiles do not have to invert anything.
+- **US and UK gallons are different** (3.785 L vs 4.546 L) and both are offered:
+  reporting UK mileage in US gallons is a classic silent 20% error.
+- **Currency formatting goes through `Intl` with `currencyDisplay: 'narrowSymbol'`**,
+  so the symbol lands where the language expects it (`$771.90` in English,
+  `771,90 $` in Italian) and USD does not render as `US$` outside America.
+- **Axis tick decimals are derived from the tick step.** A price axis spanning
+  1.830 to 1.911 was rendering "1.9 1.9 1.9 1.8" before, because the label
+  precision was fixed instead of following the interval.

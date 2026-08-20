@@ -1,10 +1,14 @@
 # AutoLog — Home Assistant add-on
 
+[![test](https://github.com/7hemas7er/autolog-addon/actions/workflows/test.yml/badge.svg)](https://github.com/7hemas7er/autolog-addon/actions/workflows/test.yml)
+[![licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![zero dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](autolog/package.json)
+
 A self-hosted logbook for vehicle fuel-ups, running costs and maintenance,
 with every figure exposed to Home Assistant as a proper sensor. A personal
 replacement for Fuelly that lives in your own house.
 
-![AutoLog](autolog/logo.png)
+![AutoLog](docs/screenshots/summary.png)
 
 - **Tank-to-tank** fuel economy, in km/L and L/100 km
 - Expenses, maintenance and reminders that fall due by date **or** by distance
@@ -16,7 +20,19 @@ replacement for Fuelly that lives in your own house.
 - Installable as a PWA on your phone
 - **Interface in English and Italian**, picked automatically or by hand
 
-> Units are kilometres, litres and euros throughout — see [Scope](#scope).
+> Metric or imperial, euros or another currency — both are configurable, and
+> the database always stays metric so switching never rewrites a record.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/charts-dark.png" alt="Charts in the dark theme"></td>
+    <td width="50%"><img src="docs/screenshots/settings.png" alt="Language and unit settings"></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Charts, dark theme</em></td>
+    <td align="center"><em>Language and units</em></td>
+  </tr>
+</table>
 
 ## Installation
 
@@ -84,6 +100,26 @@ the suggestion list follows the interface language), and **the MQTT sensor
 names in Home Assistant** stay as they are, because renaming them would rename
 your entities and break their recorded history.
 
+## Units and currency
+
+Under **Data → Units** you can pick:
+
+- **Metric** — kilometres, litres, km/L (with L/100 km alongside)
+- **US customary** — miles, US gallons, MPG
+- **Imperial UK** — miles, imperial gallons, MPG
+
+and a currency (EUR, GBP, USD, CHF, SEK, PLN, CZK, DKK, NOK, CAD, AUD).
+
+**The database is always metric**, whatever you pick: kilometres, litres and
+raw amounts. Conversion happens only on the way out to the screen and to the
+MQTT sensors, and on the way back in from the forms. Switching units therefore
+never touches a single stored record, and cannot corrupt your history.
+
+Units are an instance-wide setting, not per user, because they also drive the
+unit of the Home Assistant sensors — and two people cannot see the same sensor
+in different units. Note that changing them changes those sensor units, which
+Home Assistant will notice in its long-term statistics.
+
 ## How fuel economy is calculated
 
 Tank-to-tank, the same method Fuelly uses: the distance between two full tanks
@@ -115,7 +151,7 @@ The reasoning behind the non-obvious choices is recorded in
 cd autolog && npm test
 ```
 
-60 tests covering the consumption maths (partial fills, broken chains,
+82 tests covering the consumption maths (partial fills, broken chains,
 weighted average, non-increasing odometer, division by zero), the CSV parser
 (Fuelly in miles and US gallons, Fuelio, Italian CSV, malformed rows), the
 JSON export/import round-trip, MQTT packet encoding including packets split
@@ -125,9 +161,8 @@ across TCP chunks, and the full publisher flow against a stub broker.
 
 Worth knowing before you install it:
 
-- **Units are metric only.** Kilometres, litres and euros, everywhere. CSV
-  import converts miles and US gallons on the way in, but the app itself does
-  not display imperial units or another currency.
+- **Units are instance-wide, not per user.** Everyone sharing an instance sees
+  the same units, because the Home Assistant sensors can only carry one.
 - **It is single-user by design.** Anyone who can reach the Ingress panel sees
   and edits every vehicle. There are no per-person profiles.
 - **Architectures: `amd64` and `aarch64`.** The `node:24-alpine` base image is

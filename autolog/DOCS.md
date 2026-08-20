@@ -3,8 +3,8 @@
 A logbook for vehicle fuel-ups, running costs and maintenance, with Home
 Assistant sensors created automatically over MQTT Discovery.
 
-> The interface is available in **English and Italian**; units are kilometres,
-> litres and euros.
+> The interface is available in **English and Italian**, with metric, US or
+> imperial units and a choice of currency.
 
 ## Installation
 
@@ -26,6 +26,18 @@ the household can use their own language on every device they log in from.
 Sensor names in Home Assistant are **not** affected by this setting: they keep
 the names listed below, because renaming them would rename your entities and
 break their recorded history.
+
+## Units
+
+Under **Data → Units** you can choose metric (km, litres), US customary (miles,
+US gallons) or imperial UK (miles, imperial gallons), plus a currency.
+
+The database always stays metric — conversion happens only on display and on
+the sensors — so switching units never rewrites a record.
+
+Units are instance-wide, not per user, because they also set the unit of the
+Home Assistant sensors. Changing them changes those units, which Home Assistant
+will notice in its long-term statistics.
 
 ## Options
 

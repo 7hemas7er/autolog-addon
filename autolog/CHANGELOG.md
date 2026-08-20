@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.0
+
+- **Metric, US customary and Imperial UK units**, plus a choice of currency
+  (EUR, GBP, USD, CHF, SEK, PLN, CZK, DKK, NOK, CAD, AUD), under
+  **Data → Units**.
+- The database always stays metric: conversion happens on display, on the MQTT
+  sensors and on form input, so switching units never rewrites a record.
+- The Home Assistant sensors follow the chosen units, and the L/100 km sensor
+  is dropped under imperial rather than publishing a metric figure.
+- US and imperial gallons are handled separately — reporting UK mileage in US
+  gallons is a silent 20% error.
+- Amounts are formatted with `Intl`, so the currency symbol lands where the
+  language expects it.
+- Fixed a chart axis that repeated the same label when the value range was
+  narrower than the label precision.
+
 ## 1.2.0
 
 - The interface is now available in **English and Italian**. The language is

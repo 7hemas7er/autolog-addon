@@ -126,3 +126,47 @@ test('veicolo senza dati produce un payload valido, non un errore', function () 
   assert.deepStrictEqual(st.scadenze.elenco, []);
   assert.doesNotThrow(function () { JSON.stringify(st); });
 });
+
+/* ---------- unità imperiali ---------- */
+
+var US = { system: 'us', currency: 'USD', distance: 'mi', volume: 'gal', consumption: 'mpg' };
+
+test('in imperiale i sensori cambiano unità e L/100 km sparisce', function () {
+  var list = HASS.sensorList(US);
+  var byKey = {};
+  list.forEach(function (s) { byKey[s.key] = s; });
+  assert.strictEqual(byKey.consumo_l100, undefined, 'L/100 km non ha senso in imperiale');
+  assert.strictEqual(byKey.consumo_medio.unit, 'mpg');
+  assert.strictEqual(byKey.km_totali.unit, 'mi');
+  assert.strictEqual(byKey.litri_totali.unit, 'gal');
+  assert.strictEqual(byKey.spesa_totale.unit, 'USD');
+  assert.strictEqual(byKey.costo_km.unit, 'USD/mi');
+  assert.strictEqual(byKey.ultimo_prezzo.unit, 'USD/gal');
+  assert.strictEqual(list.length, HASS.SENSORS.length - 1);
+});
+
+test('il payload di stato è convertito, il database resta metrico', function () {
+  var metrico = HASS.statePayload(VEHICLE, FILLUPS, EXPENSES, REMINDERS, '2024-01-25');
+  var imperiale = HASS.statePayload(VEHICLE, FILLUPS, EXPENSES, REMINDERS, '2024-01-25', US);
+
+  assert.strictEqual(metrico.km_totali, 600);
+  assert.strictEqual(imperiale.km_totali, 372.82, '600 km sono 372,82 miglia');
+  assert.strictEqual(metrico.consumo_medio, 10);
+  assert.strictEqual(imperiale.consumo_medio, 23.52, '10 km/L sono 23,52 mpg US');
+  assert.strictEqual(imperiale.consumo_l100, undefined);
+  assert.strictEqual(metrico.litri_totali, 120);
+  assert.strictEqual(imperiale.litri_totali, 31.7, '120 litri sono 31,7 galloni US');
+
+  /* la spesa non si converte: è già una valuta */
+  assert.strictEqual(imperiale.spesa_totale, metrico.spesa_totale);
+
+  /* il costo per unità di distanza sì */
+  assert.ok(imperiale.costo_km > metrico.costo_km, 'un miglio costa più di un chilometro');
+});
+
+test('anche le scadenze a chilometraggio seguono le unità', function () {
+  var imperiale = HASS.statePayload(VEHICLE, FILLUPS, EXPENSES, REMINDERS, '2024-01-25', US);
+  var tag = imperiale.scadenze.elenco.find(function (r) { return r.titolo === 'Tagliando'; });
+  assert.strictEqual(tag.scadenza_km, 41010.5, '66000 km in miglia');
+  assert.strictEqual(tag.km_rimanenti, 248.55, '400 km rimanenti in miglia');
+});

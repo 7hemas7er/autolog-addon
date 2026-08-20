@@ -29,8 +29,9 @@ var csvlib = require('./lib/csv.js');
 var H = require('./lib/http.js');
 var HASS = require('./lib/hass.js');
 var I18N = require('./public/i18n.js');
+var UNITS = require('./lib/units.js');
 
-var VERSION = '1.2.0';
+var VERSION = '1.3.0';
 
 /* --- configurazione --- */
 var PORT = Number(process.env.PORT || 8099);
@@ -104,6 +105,7 @@ async function startPublisher() {
   var cfg = await mqttConfig();
   if (!cfg) return;
   cfg.version = VERSION;
+  cfg.unitSettings = readUnitSettings;
   publisher = new HASS.Publisher(db, cfg);
   publisher.start();
   DB.addChangeListener(function () { publisher.schedule(); });
@@ -119,6 +121,24 @@ function authed(req) {
 }
 
 function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+/* Unità e valuta correnti, con i default metrici/euro. */
+function readUnitSettings() {
+  var u = db.prepare('SELECT value FROM settings WHERE key = ?').get('units');
+  var c = db.prepare('SELECT value FROM settings WHERE key = ?').get('currency');
+  var system = UNITS.normalize(u && u.value);
+  var code = (c && c.value && UNITS.CURRENCIES[c.value]) ? c.value : 'EUR';
+  return {
+    system: system,
+    currency: code,
+    symbol: UNITS.currencySymbol(code),
+    distance: UNITS.distanceUnit(system),
+    volume: UNITS.volumeUnit(system),
+    consumption: UNITS.consumptionUnit(system),
+    systems: UNITS.SYSTEMS,
+    currencies: Object.keys(UNITS.CURRENCIES)
+  };
+}
 
 function vehicleOr404(res, id) {
   var v = DB.get(db, 'vehicles', id);
@@ -274,6 +294,33 @@ async function handleApi(req, res, url) {
       DB.remove(db, table, id);
       changed(existing.vehicle_id, table, 'delete');
       return H.json(res, 200, { deleted: true });
+    }
+    return H.error(res, 405, 'Metodo non consentito');
+  }
+
+  /*
+   * Unità e valuta.
+   *
+   * A differenza della lingua queste valgono per l'intera istanza, non per
+   * utente: determinano anche l'unità dei sensori MQTT, e in Home Assistant
+   * due utenti non possono vedere lo stesso sensore in unità diverse.
+   */
+  if (r1 === 'settings' && r2 === 'units') {
+    if (method === 'GET') {
+      return H.json(res, 200, readUnitSettings());
+    }
+    if (method === 'PUT') {
+      var b = await H.readJson(req);
+      if (b.system !== undefined) {
+        if (UNITS.SYSTEMS.indexOf(b.system) < 0) return H.error(res, 400, 'Sistema di unità non valido');
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('units', String(b.system));
+      }
+      if (b.currency !== undefined) {
+        if (!UNITS.CURRENCIES[b.currency]) return H.error(res, 400, 'Valuta non supportata');
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run('currency', String(b.currency));
+      }
+      changed(null, 'settings', 'update');
+      return H.json(res, 200, readUnitSettings());
     }
     return H.error(res, 405, 'Metodo non consentito');
   }
