@@ -203,3 +203,35 @@ URLs relative).
 - **Axis tick decimals are derived from the tick step.** A price axis spanning
   1.830 to 1.911 was rendering "1.9 1.9 1.9 1.8" before, because the label
   precision was fixed instead of following the interval.
+
+## Why MQTT rather than Home Assistant's REST API
+
+A fair question, settled by building the alternative and measuring it rather than
+arguing about it. A second publisher was implemented that writes states with
+`POST /api/states/<entity_id>`, installed as a separate add-on alongside the
+normal one, and the two were observed side by side.
+
+- **API-created entities lie when the source dies.** With the add-on stopped, its
+  ten sensors were still present and holding their last value at 83 and at 159
+  seconds, none of them `unavailable`. Over MQTT it is the broker that marks them
+  unavailable, through the Last Will on `autolog/status`. For an app that updates
+  when you fill the tank, a sensor that looks fresh three weeks later is the worst
+  failure mode there is.
+- **They never reach the entity registry**: zero of ten, out of 2542 entries. No
+  device grouping a vehicle's sensors, and `config/entity_registry/update` returns
+  `not_found` for both `name` and `area_id` — renaming or assigning an area is not
+  awkward, it is impossible.
+- **Long-term statistics are a tie**: eight `statistic_id`s each, identical, same
+  `unit_class`. `unique_id` turns out not to be required for statistics, contrary
+  to what was assumed earlier.
+- **The API path costs half the code** — 267 lines against 525 — and would delete
+  the hand-written MQTT client, which is the riskiest piece of this project. Those
+  525 lines buy the device, the registry entry, availability and the `cmd/fillup`
+  command channel.
+
+Not reproduced: states disappearing when Home Assistant Core restarts, because the
+test instance was someone's live system. It stays documented rather than observed.
+
+The experimental branch was not merged. Shipping the API mode would hand some
+users second-class entities, on a project whose whole argument is that it does
+less on purpose.
