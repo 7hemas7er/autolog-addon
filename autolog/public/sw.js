@@ -5,7 +5,7 @@
  */
 'use strict';
 
-var CACHE_VERSION = 'autolog-v5';
+var CACHE_VERSION = 'autolog-v6';
 
 /* Percorsi relativi allo scope: funzionano anche sotto l'Ingress di HA. */
 var SHELL = [
@@ -15,6 +15,7 @@ var SHELL = [
   'app.js',
   'charts.js',
   'calc.js',
+  'i18n.js',
   'manifest.webmanifest',
   'icon.svg',
   'icon-192.png',

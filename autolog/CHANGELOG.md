@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0
+
+- The interface is now available in **English and Italian**. The language is
+  negotiated from `Accept-Language` on first load and can be overridden under
+  **Data → Language**.
+- Behind Ingress the choice is stored per Home Assistant user (via the
+  `X-Remote-User-Id` header), so two people sharing an instance can each use
+  their own language on every device.
+- Numbers, dates and month names are formatted with `Intl` in the active
+  locale.
+- Category and fuel-type suggestions follow the interface language; values
+  already saved keep the wording they were entered with.
+- MQTT sensor names are deliberately unchanged, so existing entities and their
+  history are untouched.
+
 ## 1.1.0
 
 - Home Assistant integration over MQTT Discovery: one device per vehicle with

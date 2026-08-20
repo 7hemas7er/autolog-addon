@@ -28,8 +28,9 @@ var calc = require('./lib/calc.js');
 var csvlib = require('./lib/csv.js');
 var H = require('./lib/http.js');
 var HASS = require('./lib/hass.js');
+var I18N = require('./public/i18n.js');
 
-var VERSION = '1.1.0';
+var VERSION = '1.2.0';
 
 /* --- configurazione --- */
 var PORT = Number(process.env.PORT || 8099);
@@ -273,6 +274,49 @@ async function handleApi(req, res, url) {
       DB.remove(db, table, id);
       changed(existing.vehicle_id, table, 'delete');
       return H.json(res, 200, { deleted: true });
+    }
+    return H.error(res, 405, 'Metodo non consentito');
+  }
+
+  /*
+   * Lingua dell'interfaccia.
+   *
+   * L'Ingress di Home Assistant imposta X-Remote-User-Id, quindi la
+   * preferenza si salva per utente HA invece che per browser: chi sceglie
+   * l'inglese se lo ritrova su ogni dispositivo. Fuori dall'add-on la
+   * preferenza è unica per l'istanza.
+   */
+  if (r1 === 'lang') {
+    var userKey = 'lang:' + (req.headers['x-remote-user-id'] || 'default');
+
+    if (method === 'GET') {
+      var saved = db.prepare('SELECT value FROM settings WHERE key = ?').get(userKey);
+      var detected = I18N.negotiate(req.headers['accept-language']);
+      var chosen = saved && saved.value ? saved.value : null;
+      return H.json(res, 200, {
+        locale: chosen || detected || I18N.FALLBACK,
+        explicit: chosen,
+        detected: detected,
+        user: req.headers['x-remote-user-name'] || null,
+        available: I18N.LOCALES.map(function (c) { return { code: c, name: I18N.NAMES[c] }; })
+      });
+    }
+
+    if (method === 'PUT') {
+      var body3 = await H.readJson(req);
+      var wanted = body3.locale;
+      if (!wanted) {
+        db.prepare('DELETE FROM settings WHERE key = ?').run(userKey);
+      } else {
+        if (I18N.LOCALES.indexOf(wanted) < 0) return H.error(res, 400, 'Lingua non supportata');
+        db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(userKey, String(wanted));
+      }
+      var detected2 = I18N.negotiate(req.headers['accept-language']);
+      return H.json(res, 200, {
+        locale: wanted || detected2 || I18N.FALLBACK,
+        explicit: wanted || null,
+        detected: detected2
+      });
     }
     return H.error(res, 405, 'Metodo non consentito');
   }

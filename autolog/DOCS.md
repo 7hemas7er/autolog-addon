@@ -3,8 +3,8 @@
 A logbook for vehicle fuel-ups, running costs and maintenance, with Home
 Assistant sensors created automatically over MQTT Discovery.
 
-> **The interface is in Italian**, with kilometres, litres and euros. This
-> documentation is in English; the app itself is not translated.
+> The interface is available in **English and Italian**; units are kilometres,
+> litres and euros.
 
 ## Installation
 
@@ -14,6 +14,18 @@ no password to set — Home Assistant handles authentication.
 The database lives at `/data/autolog.db`, inside the add-on's persistent
 volume. It survives restarts and updates, and it is included in Home Assistant
 backups.
+
+## Language
+
+The language is negotiated from your browser on first load. To change it, open
+**Dati → Lingua** (**Data → Language**) and pick one.
+
+Behind Ingress the choice is saved **per Home Assistant user**, so everyone in
+the household can use their own language on every device they log in from.
+
+Sensor names in Home Assistant are **not** affected by this setting: they keep
+the names listed below, because renaming them would rename your entities and
+break their recorded history.
 
 ## Options
 
@@ -47,7 +59,8 @@ Every non-archived vehicle gets a **device** carrying ten sensors:
 | Ultimo rifornimento | timestamp | |
 | Prossima scadenza | timestamp | the full reminder list is in the attributes |
 
-Entity names follow the Italian interface. Numeric sensors declare the correct
+Entity names are in Italian regardless of the interface language, for the
+reason given above. Numeric sensors declare the correct
 `state_class` and `unit_of_measurement`, so Home Assistant records long-term
 statistics for them on its own.
 

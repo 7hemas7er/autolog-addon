@@ -1,7 +1,7 @@
 name: AutoLog
-version: "1.1.0"
+version: "1.2.0"
 slug: autolog
-description: Vehicle fuel-up, running cost and maintenance logbook (Italian interface)
+description: Vehicle fuel-up, running cost and maintenance logbook, in English and Italian
 url: https://github.com/7hemas7er/autolog-addon
 # node:24-alpine is not published for armv7: declaring it would fail the build
 # on a 32-bit Raspberry Pi.

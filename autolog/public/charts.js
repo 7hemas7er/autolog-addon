@@ -15,9 +15,16 @@
     return n;
   }
 
+  function i18n() { return global.AutoLogI18n; }
+  function t(key, params) {
+    var I = i18n();
+    return I ? I.t(key, params) : key;
+  }
   function fmt(n, d) {
+    var I = i18n();
+    if (I) return I.num(n, d);
     if (n === null || n === undefined || !isFinite(n)) return '—';
-    return Number(n).toLocaleString('it-IT', { minimumFractionDigits: d, maximumFractionDigits: d });
+    return Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
   }
 
   /* Tooltip HTML condiviso: funziona con mouse e con il dito. */
@@ -84,16 +91,15 @@
   }
 
   function shortDate(iso) {
-    if (!iso) return '';
-    var p = String(iso).split('-');
-    return p.length >= 3 ? p[2] + '/' + p[1] + '/' + p[0].slice(2) : iso;
+    var I = i18n();
+    if (I) return I.date(iso);
+    return String(iso || '');
   }
 
   function shortMonth(m) {
-    var names = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-    var p = String(m).split('-');
-    if (p.length < 2) return m;
-    return names[Number(p[1]) - 1] + ' ' + p[0].slice(2);
+    var I = i18n();
+    if (I) return I.month(m);
+    return String(m);
   }
 
   /* ---------- grafico a linea ---------- */
@@ -106,7 +112,7 @@
     opts = opts || {};
     container.textContent = '';
     if (!points || points.length < 2) {
-      container.appendChild(emptyState(opts.emptyMessage || 'Dati insufficienti per il grafico.'));
+      container.appendChild(emptyState(opts.emptyMessage || t('chart.empty.generic')));
       return;
     }
     var W = 640, HGT = 260;
@@ -126,7 +132,7 @@
 
     var svg = el('svg', {
       viewBox: '0 0 ' + W + ' ' + HGT, class: 'chart',
-      role: 'img', 'aria-label': (opts.seriesName || 'Serie') + ': ' + points.length + ' valori'
+      role: 'img', 'aria-label': (opts.seriesName || '') + ' ' + points.length
     });
     svg.style.width = '100%';
 
@@ -195,7 +201,7 @@
       legend.innerHTML =
         '<span><i class="swatch" style="background:var(--serie1)"></i> ' +
         (opts.seriesName || 'Serie') + '</span>' +
-        '<span><i class="swatch dashed"></i> ' + (opts.averageLabel || 'media') + ' ' +
+        '<span><i class="swatch dashed"></i> ' + (opts.averageLabel || t('chart.average')) + ' ' +
         fmt(opts.average, dec) + ' ' + (opts.unit || '') + '</span>';
       container.appendChild(legend);
     }
@@ -207,7 +213,7 @@
     opts = opts || {};
     container.textContent = '';
     if (!items || !items.length) {
-      container.appendChild(emptyState(opts.emptyMessage || 'Nessun dato da mostrare.'));
+      container.appendChild(emptyState(opts.emptyMessage || t('chart.empty.generic')));
       return;
     }
     var rowH = 30, W = 640;
@@ -217,7 +223,7 @@
     var max = Math.max.apply(null, items.map(function (i) { return Math.abs(i.value); })) || 1;
 
     var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + HGT, class: 'chart', role: 'img',
-      'aria-label': opts.ariaLabel || 'Barre orizzontali' });
+      'aria-label': opts.ariaLabel || '' });
     svg.style.width = '100%';
 
     items.forEach(function (it, i) {
@@ -249,7 +255,7 @@
     opts = opts || {};
     container.textContent = '';
     if (!rows || !rows.length) {
-      container.appendChild(emptyState(opts.emptyMessage || 'Nessun dato da mostrare.'));
+      container.appendChild(emptyState(opts.emptyMessage || t('chart.empty.generic')));
       return;
     }
     var W = 640, HGT = 280;
@@ -260,7 +266,7 @@
     var hi = Math.max(max, ticks[ticks.length - 1]);
 
     var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + HGT, class: 'chart', role: 'img',
-      'aria-label': opts.ariaLabel || 'Costi mensili' });
+      'aria-label': opts.ariaLabel || '' });
     svg.style.width = '100%';
 
     var Y = function (v) { return m.t + ih - v / hi * ih; };
@@ -283,18 +289,20 @@
       if (a > 0) {
         var r1 = el('rect', { x: x, y: ya, width: bw, height: Math.max(1, m.t + ih - ya),
           rx: b > 0 ? 0 : 4, fill: 'var(--serie1)', style: 'cursor:pointer' });
-        r1.appendChild(el('title', {}, shortMonth(r.label) + ' — Carburante: ' + fmt(a, 2) + ' €'));
+        r1.appendChild(el('title', {}, shortMonth(r.label) + ' — ' + t('chart.series.fuel') + ': ' + fmt(a, 2)));
         bindTip(r1, function () {
-          return '<b>' + shortMonth(r.label) + '</b><br>Carburante: ' + fmt(a, 2) + ' €<br>Altre spese: ' + fmt(b, 2) + ' €';
+          return '<b>' + shortMonth(r.label) + '</b><br>' + t('chart.series.fuel') + ': ' + fmt(a, 2) +
+                 '<br>' + t('chart.series.other') + ': ' + fmt(b, 2);
         });
         svg.appendChild(r1);
       }
       if (b > 0) {
         var h2 = Math.max(1, ya - yb - gap);
         var r2 = el('rect', { x: x, y: yb, width: bw, height: h2, rx: 4, fill: 'var(--serie2)', style: 'cursor:pointer' });
-        r2.appendChild(el('title', {}, shortMonth(r.label) + ' — Altre spese: ' + fmt(b, 2) + ' €'));
+        r2.appendChild(el('title', {}, shortMonth(r.label) + ' — ' + t('chart.series.other') + ': ' + fmt(b, 2)));
         bindTip(r2, function () {
-          return '<b>' + shortMonth(r.label) + '</b><br>Carburante: ' + fmt(a, 2) + ' €<br>Altre spese: ' + fmt(b, 2) + ' €';
+          return '<b>' + shortMonth(r.label) + '</b><br>' + t('chart.series.fuel') + ': ' + fmt(a, 2) +
+                 '<br>' + t('chart.series.other') + ': ' + fmt(b, 2);
         });
         svg.appendChild(r2);
       }
@@ -314,8 +322,8 @@
     var legend = document.createElement('div');
     legend.className = 'chart-legend';
     legend.innerHTML =
-      '<span><i class="swatch" style="background:var(--serie1)"></i> Carburante</span>' +
-      '<span><i class="swatch" style="background:var(--serie2)"></i> Altre spese</span>';
+      '<span><i class="swatch" style="background:var(--serie1)"></i> ' + t('chart.series.fuel') + '</span>' +
+      '<span><i class="swatch" style="background:var(--serie2)"></i> ' + t('chart.series.other') + '</span>';
     container.appendChild(legend);
   }
 

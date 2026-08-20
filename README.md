@@ -14,11 +14,9 @@ replacement for Fuelly that lives in your own house.
 - **One Home Assistant device per vehicle**, with ten long-term-statistics sensors
 - Served in the sidebar through Ingress, visible to non-admin users too
 - Installable as a PWA on your phone
+- **Interface in English and Italian**, picked automatically or by hand
 
-> **The interface is in Italian, and units are km / litres / €.** That is a
-> deliberate design decision, not an oversight — see [Scope](#scope) below.
-> The documentation is in English so that the code and the Home Assistant
-> integration are useful to everyone.
+> Units are kilometres, litres and euros throughout — see [Scope](#scope).
 
 ## Installation
 
@@ -58,6 +56,33 @@ data:
 
 The slug is the vehicle name, lowercased, with every non-alphanumeric character
 replaced by `_`. Omit `date` and today is used.
+
+## Language
+
+The interface ships in **English and Italian**. On first load the language is
+negotiated from the `Accept-Language` header, so a Home Assistant user browsing
+in English gets English without configuring anything.
+
+To override it, go to **Data → Language** and pick one. Behind Ingress the
+choice is stored **per Home Assistant user** — the add-on reads the
+`X-Remote-User-Id` header the Ingress proxy sets — so two people sharing the
+same instance can each use their own language, on every device they log in
+from. Outside Ingress the preference is stored once for the instance.
+
+Numbers, dates and month names are formatted through `Intl` in the active
+locale, so Italian shows `1.234,50` and `12/03/24` while English shows
+`1,234.50`.
+
+Adding a language means copying one block in `autolog/public/i18n.js`,
+translating the values and adding the code to the list. A test fails if a key
+is missing, left empty, or has placeholders that do not match the other
+locales.
+
+Two things stay untranslated on purpose: **category and fuel-type names you
+have already saved** are your data, so they keep the wording you typed (only
+the suggestion list follows the interface language), and **the MQTT sensor
+names in Home Assistant** stay as they are, because renaming them would rename
+your entities and break their recorded history.
 
 ## How fuel economy is calculated
 
@@ -100,9 +125,9 @@ across TCP chunks, and the full publisher flow against a stub broker.
 
 Worth knowing before you install it:
 
-- **The interface is Italian only.** Labels, dates and number formatting are
-  Italian; units are kilometres, litres and euros. There is no translation
-  layer, and adding one would touch every view.
+- **Units are metric only.** Kilometres, litres and euros, everywhere. CSV
+  import converts miles and US gallons on the way in, but the app itself does
+  not display imperial units or another currency.
 - **It is single-user by design.** Anyone who can reach the Ingress panel sees
   and edits every vehicle. There are no per-person profiles.
 - **Architectures: `amd64` and `aarch64`.** The `node:24-alpine` base image is

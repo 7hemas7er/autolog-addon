@@ -22,166 +22,158 @@
   <form id="login-form" class="login-card">
     <h1>AutoLog</h1>
     <input class="sr-only" type="text" name="username" autocomplete="username" value="autolog" tabindex="-1" aria-hidden="true" readonly>
-    <label for="login-password">Password</label>
+    <label for="login-password" data-i18n="login.password">Password</label>
     <input id="login-password" type="password" autocomplete="current-password" required>
     <p id="login-error" class="error" role="alert" hidden></p>
-    <button type="submit" class="btn primary">Entra</button>
+    <button type="submit" class="btn primary" data-i18n="login.submit">Entra</button>
   </form>
 </div>
 
 <div id="app" hidden>
   <header class="topbar">
     <div class="topbar-row">
-      <label class="sr-only" for="vehicle-select">Veicolo</label>
-      <select id="vehicle-select" aria-label="Veicolo selezionato"></select>
-      <button id="theme-toggle" class="icon-btn" type="button" aria-label="Cambia tema">
+      <label class="sr-only" for="vehicle-select" data-i18n="topbar.vehicle">Veicolo</label>
+      <select id="vehicle-select" data-i18n-aria-label="topbar.selected" aria-label="Veicolo selezionato"></select>
+      <button id="theme-toggle" class="icon-btn" type="button" data-i18n-aria-label="topbar.theme" aria-label="Cambia tema">
         <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
       </button>
     </div>
-    <nav class="tabs" id="tabs" aria-label="Sezioni">
-      <button type="button" data-view="riepilogo" class="tab" aria-current="page">Riepilogo</button>
-      <button type="button" data-view="rifornimenti" class="tab">Rifornimenti</button>
-      <button type="button" data-view="spese" class="tab">Spese</button>
-      <button type="button" data-view="promemoria" class="tab">Promemoria</button>
-      <button type="button" data-view="grafici" class="tab">Grafici</button>
-      <button type="button" data-view="veicoli" class="tab">Veicoli</button>
-      <button type="button" data-view="dati" class="tab">Dati</button>
+    <nav class="tabs" id="tabs" data-i18n-aria-label="nav.sections" aria-label="Sezioni">
+      <button type="button" data-view="riepilogo" class="tab" aria-current="page" data-i18n="nav.summary">Riepilogo</button>
+      <button type="button" data-view="rifornimenti" class="tab" data-i18n="nav.fillups">Rifornimenti</button>
+      <button type="button" data-view="spese" class="tab" data-i18n="nav.expenses">Spese</button>
+      <button type="button" data-view="promemoria" class="tab" data-i18n="nav.reminders">Promemoria</button>
+      <button type="button" data-view="grafici" class="tab" data-i18n="nav.charts">Grafici</button>
+      <button type="button" data-view="veicoli" class="tab" data-i18n="nav.vehicles">Veicoli</button>
+      <button type="button" data-view="dati" class="tab" data-i18n="nav.data">Dati</button>
     </nav>
   </header>
 
-  <p id="offline-banner" class="banner" role="status" hidden>Dati non raggiungibili: il server non risponde.</p>
+  <p id="offline-banner" class="banner" role="status" hidden data-i18n="app.offline">Dati non raggiungibili: il server non risponde.</p>
 
   <main id="main" class="main"></main>
 
-  <button id="fab" class="fab" type="button" aria-label="Aggiungi rifornimento">
+  <button id="fab" class="fab" type="button" data-i18n-aria-label="action.addFillup" aria-label="Aggiungi rifornimento">
     <svg viewBox="0 0 24 24" aria-hidden="true" width="24" height="24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
   </button>
 </div>
 
 <dialog id="dlg-fillup">
   <form method="dialog" id="form-fillup" class="form">
-    <h2 id="fillup-title">Nuovo rifornimento</h2>
+    <h2 id="fillup-title" data-i18n="title.newFillup">Nuovo rifornimento</h2>
     <div class="grid2">
-      <p class="field"><label for="f-date">Data</label><input id="f-date" name="date" type="date" required></p>
-      <p class="field"><label for="f-odo">Chilometri</label><input id="f-odo" name="odo" type="text" inputmode="decimal" required></p>
-      <p class="field"><label for="f-liters">Litri</label><input id="f-liters" name="liters" type="text" inputmode="decimal" required></p>
-      <p class="field"><label for="f-cost">Costo totale (€)</label><input id="f-cost" name="total_cost" type="text" inputmode="decimal"></p>
-      <p class="field"><label for="f-price">Prezzo/litro (€/L)</label><input id="f-price" name="price_l" type="text" inputmode="decimal"></p>
-      <p class="field"><label for="f-fuel">Carburante</label><input id="f-fuel" name="fuel_type" type="text" list="fuel-list"></p>
+      <p class="field"><label for="f-date" data-i18n="field.date">Data</label><input id="f-date" name="date" type="date" required></p>
+      <p class="field"><label for="f-odo" data-i18n="field.odo">Chilometri</label><input id="f-odo" name="odo" type="text" inputmode="decimal" required></p>
+      <p class="field"><label for="f-liters" data-i18n="field.liters">Litri</label><input id="f-liters" name="liters" type="text" inputmode="decimal" required></p>
+      <p class="field"><label for="f-cost" data-i18n="field.totalCost">Costo totale (€)</label><input id="f-cost" name="total_cost" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="f-price" data-i18n="field.pricePerLiter">Prezzo/litro (€/L)</label><input id="f-price" name="price_l" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="f-fuel" data-i18n="field.fuelType">Carburante</label><input id="f-fuel" name="fuel_type" type="text" list="fuel-list"></p>
     </div>
-    <p class="check"><label><input id="f-full" name="full" type="checkbox" checked> Pieno completo</label></p>
-    <p class="check"><label><input id="f-missed" name="missed" type="checkbox"> Rifornimento precedente non registrato</label></p>
+    <p class="check"><label><input id="f-full" name="full" type="checkbox" checked> <span data-i18n="field.full">Pieno completo</span></label></p>
+    <p class="check"><label><input id="f-missed" name="missed" type="checkbox"> <span data-i18n="field.missed">Rifornimento precedente non registrato</span></label></p>
     <div class="grid2">
-      <p class="field"><label for="f-station">Distributore</label><input id="f-station" name="station" type="text"></p>
-      <p class="field"><label for="f-location">Luogo</label><input id="f-location" name="location" type="text"></p>
+      <p class="field"><label for="f-station" data-i18n="field.station">Distributore</label><input id="f-station" name="station" type="text"></p>
+      <p class="field"><label for="f-location" data-i18n="field.location">Luogo</label><input id="f-location" name="location" type="text"></p>
     </div>
-    <p class="field"><label for="f-notes">Note</label><input id="f-notes" name="notes" type="text"></p>
+    <p class="field"><label for="f-notes" data-i18n="field.notes">Note</label><input id="f-notes" name="notes" type="text"></p>
     <ul id="f-warnings" class="warnings" role="status"></ul>
     <div class="actions">
-      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <button type="button" class="btn danger" data-action="delete" hidden data-i18n="action.delete">Elimina</button>
       <span class="spacer"></span>
-      <button type="button" class="btn" data-action="cancel">Annulla</button>
-      <button type="submit" class="btn primary">Salva</button>
+      <button type="button" class="btn" data-action="cancel" data-i18n="action.cancel">Annulla</button>
+      <button type="submit" class="btn primary" data-i18n="action.save">Salva</button>
     </div>
   </form>
 </dialog>
 
 <dialog id="dlg-expense">
   <form method="dialog" id="form-expense" class="form">
-    <h2 id="expense-title">Nuova spesa</h2>
+    <h2 id="expense-title" data-i18n="title.newExpense">Nuova spesa</h2>
     <div class="grid2">
-      <p class="field"><label for="e-date">Data</label><input id="e-date" name="date" type="date" required></p>
-      <p class="field"><label for="e-odo">Chilometri</label><input id="e-odo" name="odo" type="text" inputmode="decimal"></p>
-      <p class="field"><label for="e-category">Categoria</label><input id="e-category" name="category" type="text" list="category-list" required></p>
-      <p class="field"><label for="e-cost">Costo (€)</label><input id="e-cost" name="cost" type="text" inputmode="decimal" required></p>
+      <p class="field"><label for="e-date" data-i18n="field.date">Data</label><input id="e-date" name="date" type="date" required></p>
+      <p class="field"><label for="e-odo" data-i18n="field.odo">Chilometri</label><input id="e-odo" name="odo" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="e-category" data-i18n="field.category">Categoria</label><input id="e-category" name="category" type="text" list="category-list" required></p>
+      <p class="field"><label for="e-cost" data-i18n="field.cost">Costo (€)</label><input id="e-cost" name="cost" type="text" inputmode="decimal" required></p>
     </div>
-    <p class="field"><label for="e-description">Descrizione</label><input id="e-description" name="description" type="text"></p>
+    <p class="field"><label for="e-description" data-i18n="field.description">Descrizione</label><input id="e-description" name="description" type="text"></p>
     <div class="grid2">
-      <p class="field"><label for="e-vendor">Officina / fornitore</label><input id="e-vendor" name="vendor" type="text"></p>
-      <p class="field"><label for="e-notes">Note</label><input id="e-notes" name="notes" type="text"></p>
+      <p class="field"><label for="e-vendor" data-i18n="field.vendor">Officina / fornitore</label><input id="e-vendor" name="vendor" type="text"></p>
+      <p class="field"><label for="e-notes" data-i18n="field.notes">Note</label><input id="e-notes" name="notes" type="text"></p>
     </div>
     <div class="actions">
-      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <button type="button" class="btn danger" data-action="delete" hidden data-i18n="action.delete">Elimina</button>
       <span class="spacer"></span>
-      <button type="button" class="btn" data-action="cancel">Annulla</button>
-      <button type="submit" class="btn primary">Salva</button>
+      <button type="button" class="btn" data-action="cancel" data-i18n="action.cancel">Annulla</button>
+      <button type="submit" class="btn primary" data-i18n="action.save">Salva</button>
     </div>
   </form>
 </dialog>
 
 <dialog id="dlg-reminder">
   <form method="dialog" id="form-reminder" class="form">
-    <h2 id="reminder-title">Nuovo promemoria</h2>
-    <p class="field"><label for="r-title">Titolo</label><input id="r-title" name="title" type="text" required></p>
+    <h2 id="reminder-title" data-i18n="title.newReminder">Nuovo promemoria</h2>
+    <p class="field"><label for="r-title" data-i18n="field.title">Titolo</label><input id="r-title" name="title" type="text" required></p>
     <div class="grid2">
-      <p class="field"><label for="r-category">Categoria</label><input id="r-category" name="category" type="text" list="category-list"></p>
-      <p class="field"><label for="r-due-date">Scadenza (data)</label><input id="r-due-date" name="due_date" type="date"></p>
-      <p class="field"><label for="r-due-odo">Scadenza (km)</label><input id="r-due-odo" name="due_odo" type="text" inputmode="decimal"></p>
-      <p class="field"><label for="r-every-months">Ricorre ogni (mesi)</label><input id="r-every-months" name="every_months" type="text" inputmode="numeric"></p>
-      <p class="field"><label for="r-every-km">Ricorre ogni (km)</label><input id="r-every-km" name="every_km" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="r-category" data-i18n="field.category">Categoria</label><input id="r-category" name="category" type="text" list="category-list"></p>
+      <p class="field"><label for="r-due-date" data-i18n="field.dueDate">Scadenza (data)</label><input id="r-due-date" name="due_date" type="date"></p>
+      <p class="field"><label for="r-due-odo" data-i18n="field.dueOdo">Scadenza (km)</label><input id="r-due-odo" name="due_odo" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="r-every-months" data-i18n="field.everyMonths">Ricorre ogni (mesi)</label><input id="r-every-months" name="every_months" type="text" inputmode="numeric"></p>
+      <p class="field"><label for="r-every-km" data-i18n="field.everyKm">Ricorre ogni (km)</label><input id="r-every-km" name="every_km" type="text" inputmode="decimal"></p>
     </div>
-    <p class="field"><label for="r-notes">Note</label><input id="r-notes" name="notes" type="text"></p>
+    <p class="field"><label for="r-notes" data-i18n="field.notes">Note</label><input id="r-notes" name="notes" type="text"></p>
     <div class="actions">
-      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <button type="button" class="btn danger" data-action="delete" hidden data-i18n="action.delete">Elimina</button>
       <span class="spacer"></span>
-      <button type="button" class="btn" data-action="cancel">Annulla</button>
-      <button type="submit" class="btn primary">Salva</button>
+      <button type="button" class="btn" data-action="cancel" data-i18n="action.cancel">Annulla</button>
+      <button type="submit" class="btn primary" data-i18n="action.save">Salva</button>
     </div>
   </form>
 </dialog>
 
 <dialog id="dlg-vehicle">
   <form method="dialog" id="form-vehicle" class="form">
-    <h2 id="vehicle-title">Nuovo veicolo</h2>
-    <p class="field"><label for="v-name">Nome</label><input id="v-name" name="name" type="text" required></p>
+    <h2 id="vehicle-title" data-i18n="title.newVehicle">Nuovo veicolo</h2>
+    <p class="field"><label for="v-name" data-i18n="field.name">Nome</label><input id="v-name" name="name" type="text" required></p>
     <div class="grid2">
-      <p class="field"><label for="v-make">Marca</label><input id="v-make" name="make" type="text"></p>
-      <p class="field"><label for="v-model">Modello</label><input id="v-model" name="model" type="text"></p>
-      <p class="field"><label for="v-year">Anno</label><input id="v-year" name="year" type="text" inputmode="numeric"></p>
-      <p class="field"><label for="v-plate">Targa</label><input id="v-plate" name="plate" type="text"></p>
-      <p class="field"><label for="v-fuel">Carburante</label><input id="v-fuel" name="fuel_type" type="text" list="fuel-list"></p>
-      <p class="field"><label for="v-tank">Serbatoio (L)</label><input id="v-tank" name="tank_l" type="text" inputmode="decimal"></p>
-      <p class="field"><label for="v-start">Km iniziali</label><input id="v-start" name="start_odo" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="v-make" data-i18n="field.make">Marca</label><input id="v-make" name="make" type="text"></p>
+      <p class="field"><label for="v-model" data-i18n="field.model">Modello</label><input id="v-model" name="model" type="text"></p>
+      <p class="field"><label for="v-year" data-i18n="field.year">Anno</label><input id="v-year" name="year" type="text" inputmode="numeric"></p>
+      <p class="field"><label for="v-plate" data-i18n="field.plate">Targa</label><input id="v-plate" name="plate" type="text"></p>
+      <p class="field"><label for="v-fuel" data-i18n="field.fuelType">Carburante</label><input id="v-fuel" name="fuel_type" type="text" list="fuel-list"></p>
+      <p class="field"><label for="v-tank" data-i18n="field.tank">Serbatoio (L)</label><input id="v-tank" name="tank_l" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="v-start" data-i18n="field.startOdo">Km iniziali</label><input id="v-start" name="start_odo" type="text" inputmode="decimal"></p>
     </div>
-    <p class="check"><label><input id="v-archived" name="archived" type="checkbox"> Archiviato</label></p>
-    <p class="field"><label for="v-notes">Note</label><input id="v-notes" name="notes" type="text"></p>
+    <p class="check"><label><input id="v-archived" name="archived" type="checkbox"> <span data-i18n="field.archived">Archiviato</span></label></p>
+    <p class="field"><label for="v-notes" data-i18n="field.notes">Note</label><input id="v-notes" name="notes" type="text"></p>
     <div class="actions">
-      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <button type="button" class="btn danger" data-action="delete" hidden data-i18n="action.delete">Elimina</button>
       <span class="spacer"></span>
-      <button type="button" class="btn" data-action="cancel">Annulla</button>
-      <button type="submit" class="btn primary">Salva</button>
+      <button type="button" class="btn" data-action="cancel" data-i18n="action.cancel">Annulla</button>
+      <button type="submit" class="btn primary" data-i18n="action.save">Salva</button>
     </div>
   </form>
 </dialog>
 
 <dialog id="dlg-import">
   <form method="dialog" id="form-import" class="form">
-    <h2>Anteprima import</h2>
+    <h2 data-i18n="title.importPreview">Anteprima import</h2>
     <p id="import-summary" class="muted"></p>
     <div class="table-wrap"><table id="import-table"></table></div>
     <ul id="import-errors" class="warnings"></ul>
     <div class="actions">
       <span class="spacer"></span>
-      <button type="button" class="btn" data-action="cancel">Annulla</button>
-      <button type="submit" class="btn primary">Importa</button>
+      <button type="button" class="btn" data-action="cancel" data-i18n="action.cancel">Annulla</button>
+      <button type="submit" class="btn primary" data-i18n="action.import">Importa</button>
     </div>
   </form>
 </dialog>
 
-<datalist id="fuel-list">
-  <option value="Benzina"></option><option value="Diesel"></option><option value="GPL"></option>
-  <option value="Metano"></option><option value="Elettrico"></option><option value="Ibrido"></option>
-</datalist>
-<datalist id="category-list">
-  <option value="Manutenzione"></option><option value="Tagliando"></option><option value="Gomme"></option>
-  <option value="Assicurazione"></option><option value="Bollo"></option><option value="Revisione"></option>
-  <option value="Riparazione"></option><option value="Multa"></option><option value="Autostrada"></option>
-  <option value="Parcheggio"></option><option value="Lavaggio"></option><option value="Accessori"></option>
-  <option value="Altro"></option>
-</datalist>
+<datalist id="fuel-list"></datalist>
+<datalist id="category-list"></datalist>
 
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="i18n.js"></script>
 <script src="calc.js"></script>
 <script src="charts.js"></script>
 <script src="app.js"></script>

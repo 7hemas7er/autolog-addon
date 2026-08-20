@@ -137,3 +137,34 @@ URLs relative).
 - **That value is read by Home Assistant Core when the panel is registered**, so
   changing `config.yaml` and rebuilding the add-on is not enough — Core has to
   restart before the new value takes effect.
+
+## Localisation
+
+- **Detection, then explicit choice.** The language is negotiated from
+  `Accept-Language` on the server (and `navigator.languages` client-side when
+  the API is unreachable), and an explicit choice always wins. Home Assistant
+  does not forward the user's profile language to an Ingress add-on — only the
+  browser's `Accept-Language` survives the proxy — so this is as close to
+  "follow Home Assistant" as the platform allows.
+- **The preference is stored per Home Assistant user**, not per browser. The
+  Ingress proxy sets `X-Remote-User-Id`, so the choice is keyed on it in the
+  `settings` table and follows the person across devices. Outside Ingress there
+  is no user, and a single instance-wide preference is used.
+- **Dictionaries live in `public/i18n.js`**, served to the browser and required
+  by the server for `Accept-Language` negotiation — one file, one source of
+  truth, same trick already used for `calc.js`.
+- **The tests enforce the contract**: every locale must carry exactly the same
+  keys, no empty values, and matching placeholders. A separate test greps
+  `app.js` and `charts.js` for Italian string literals, so a hardcoded label
+  fails the build rather than shipping untranslated.
+- **Numbers and dates go through `Intl`**, never a hand-rolled formatter. Note
+  that Italian correctly omits digit grouping for four-digit integers (`1250`,
+  not `1.250`) while English groups them — that is the locale being right, not
+  a bug.
+- **Categories and fuel types are user data.** Only the suggestion lists are
+  translated; values already stored keep the wording they were entered with.
+  Translating them retroactively would rewrite the user's own records, and a
+  chart would silently merge or split categories on a language switch.
+- **MQTT sensor names are not localised.** The name feeds Home Assistant's
+  entity naming, so changing it would rename existing entities and break their
+  recorded history. Localising them would need a separate, opt-in setting.
