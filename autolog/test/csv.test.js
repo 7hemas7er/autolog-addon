@@ -34,16 +34,20 @@ test('BOM, virgolette raddoppiate e separatore ;', function () {
   assert.strictEqual(p.rows[2][2], 'nota con "virgolette"');
 });
 
-/* CSV Fuelly reale: miglia, galloni US, date MM/DD/YYYY */
-var FUELLY = [
+/*
+ * Export in unità americane: miglia, galloni US, date MM/GG/AAAA, con totale e
+ * prezzo per gallone in due colonne separate. Serve a coprire la conversione,
+ * non a rappresentare una specifica app.
+ */
+var US_EXPORT = [
   'Fuel-up Date,Odometer (mi),Total Gallons,Total Cost,Price/Gallon,Filled Up,Missed Fuel-up,Gas Brand,Location,Payment Type,Octane,Notes',
   '01/15/2024,10000,10.000,40.00,4.000,Yes,No,Shell,Roma,Credit,95,',
   '02/01/2024,10310,10.000,42.00,4.200,Yes,No,Q8,Roma,Cash,95,pieno',
   ''
 ].join('\n');
 
-test('import CSV Fuelly con conversione miglia/galloni', function () {
-  var r = csv.parseFillupsCSV(FUELLY, { miles: true, gallons: true, dateOrder: 'US' });
+test('import in unità americane con conversione miglia/galloni', function () {
+  var r = csv.parseFillupsCSV(US_EXPORT, { miles: true, gallons: true, dateOrder: 'US' });
   assert.strictEqual(r.skipped, 0);
   assert.strictEqual(r.rows.length, 2);
 
@@ -65,7 +69,7 @@ test('import CSV Fuelly con conversione miglia/galloni', function () {
 });
 
 test('senza conversione i valori restano invariati', function () {
-  var r = csv.parseFillupsCSV(FUELLY, { miles: false, gallons: false, dateOrder: 'US' });
+  var r = csv.parseFillupsCSV(US_EXPORT, { miles: false, gallons: false, dateOrder: 'US' });
   assert.strictEqual(r.rows[0].odo, 10000);
   assert.strictEqual(r.rows[0].liters, 10);
   assert.strictEqual(r.rows[0].price_l, 4);
@@ -142,16 +146,19 @@ test('serializzazione CSV con escape', function () {
   assert.strictEqual(back.rows[1][1], 'dice "ciao"');
 });
 
-/* Export in stile Fuelio: colonna "price" = prezzo unitario, nessun totale. */
-var FUELIO = [
+/*
+ * Export Fuelly scaricato dal sito: colonne come documentate su
+ * fuelly.com/csv-import, con "price" come prezzo unitario e nessun totale.
+ */
+var FUELLY_WEB = [
   'car_name, model, km/l,  odometer, km, litres, price, city_percentage, fuelup_date, date_added, tags, notes, missed_fuelup, partial_fuelup, latitude, longitude, brand',
   '"Furgone","Marca Modello",8.64,120000.0,293.0,33.9,2.212,50,2024-03-18,2024-03-18 17:08:47,"","",0,0,,,"Eni"',
   '"Furgone","Marca Modello",0,120651.0,651.0,14.434,2.44,50,2024-03-19,2024-03-19 12:52:51,"","",0,1,,,""',
   ''
 ].join('\n');
 
-test('colonna "price" ambigua riconosciuta come prezzo unitario', function () {
-  var r = csv.parseFillupsCSV(FUELIO, {});
+test('export Fuelly: colonna "price" riconosciuta come prezzo unitario', function () {
+  var r = csv.parseFillupsCSV(FUELLY_WEB, {});
   assert.strictEqual(r.skipped, 0);
   assert.strictEqual(r.rows.length, 2);
   var a = r.rows[0];

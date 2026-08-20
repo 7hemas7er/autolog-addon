@@ -14,7 +14,8 @@ replacement for Fuelly that lives in your own house.
 - Expenses, maintenance and reminders that fall due by date **or** by distance
 - Multiple vehicles, each with its own statistics
 - Charts for consumption, fuel price, spending by category and monthly costs
-- CSV import from **Fuelly, Fuelio and Drivvo**, CSV export and JSON backup
+- CSV import from **Fuelly** (verified against a real export), plus Fuelio and
+  Drivvo column mappings; CSV export and JSON backup
 - **One Home Assistant device per vehicle**, with ten long-term-statistics sensors
 - Served in the sidebar through Ingress, visible to non-admin users too
 - Installable as a PWA on your phone

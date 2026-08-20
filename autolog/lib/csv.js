@@ -198,10 +198,11 @@ var ALIASES = {
 };
 
 /*
- * La colonna "price" è ambigua: per Drivvo è il totale speso, per Fuelio è il
- * prezzo unitario. Se non c'è una colonna dedicata al prezzo/litro, si decide
- * dai dati: un valore piccolo (<= 5) a fronte di volumi normali (>= 5) è un
- * prezzo unitario, non un pieno da 3 euro.
+ * La colonna "price" è ambigua fra un export e l'altro: nello schema
+ * documentato da Fuelly (fuelly.com/csv-import) è il prezzo unitario, in altri
+ * export è il totale speso. Se non c'è una colonna dedicata al prezzo per
+ * unità, si decide dai dati: un valore piccolo (<= 5) a fronte di volumi
+ * normali (>= 5) è un prezzo unitario, non un pieno da 3 euro.
  */
 function disambiguatePrice(map, rows, parseVal) {
   if (map.total_cost === undefined || map.price_l !== undefined) return map;

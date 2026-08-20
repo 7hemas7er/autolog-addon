@@ -41,8 +41,9 @@ URLs relative).
   `,` are treated as English (`.` is the decimal mark), files using `;` or tab
   as Italian (`,` is the decimal mark). Without this rule, `10.000` gallons in
   a Fuelly export would import as ten thousand litres.
-- **A column literally named `price` is ambiguous** — Drivvo means the total
-  paid, Fuelio means the unit price. When no dedicated unit-price column
+- **A column literally named `price` is ambiguous** between exports: in the
+  schema Fuelly documents at fuelly.com/csv-import it is the unit price, while
+  other exports use it for the total paid. When no dedicated unit-price column
   exists, the decision is made from the data: a small median value (≤ 5)
   against normal volumes (≥ 5) is a unit price, not a three-euro fill-up.
 - **`price_l` is always recomputed** as `total_cost / liters` when both are

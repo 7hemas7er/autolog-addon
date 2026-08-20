@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1
+
+- Corrected the documentation and test names: the CSV schema with `car_name`,
+  `city_percentage`, `missed_fuelup` and `partial_fuelup` is **Fuelly's**
+  documented format, not Fuelio's. Only the naming was wrong — the parser
+  behaviour is unchanged, and it is the format that has been verified against a
+  real eleven-year export.
+
 ## 1.3.0
 
 - **Metric, US customary and Imperial UK units**, plus a choice of currency
