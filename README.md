@@ -1,100 +1,115 @@
-# AutoLog — add-on per Home Assistant
+# AutoLog — Home Assistant add-on
 
-Registro self-hosted di rifornimenti, consumi e manutenzione dei veicoli, in
-italiano, in km / litri / €. Un sostituto personale di Fuelly che gira in casa
-tua, con i sensori esposti a Home Assistant.
+A self-hosted logbook for vehicle fuel-ups, running costs and maintenance,
+with every figure exposed to Home Assistant as a proper sensor. A personal
+replacement for Fuelly that lives in your own house.
 
 ![AutoLog](autolog/logo.png)
 
-- Consumi col metodo **pieno-a-pieno**, in km/L e L/100 km
-- Spese, manutenzione e promemoria a scadenza chilometrica o temporale
-- Più veicoli, con statistiche separate
-- Grafici di consumo, prezzo al litro, spese per categoria e costi mensili
-- Import CSV da **Fuelly, Fuelio e Drivvo**, export CSV e backup JSON
-- Un **device Home Assistant per veicolo**, con dieci sensori storicizzati
-- Interfaccia nella barra laterale via Ingress, anche per utenti non admin
-- Installabile come PWA sul telefono
+- **Tank-to-tank** fuel economy, in km/L and L/100 km
+- Expenses, maintenance and reminders that fall due by date **or** by distance
+- Multiple vehicles, each with its own statistics
+- Charts for consumption, fuel price, spending by category and monthly costs
+- CSV import from **Fuelly, Fuelio and Drivvo**, CSV export and JSON backup
+- **One Home Assistant device per vehicle**, with ten long-term-statistics sensors
+- Served in the sidebar through Ingress, visible to non-admin users too
+- Installable as a PWA on your phone
 
-## Installazione
+> **The interface is in Italian, and units are km / litres / €.** That is a
+> deliberate design decision, not an oversight — see [Scope](#scope) below.
+> The documentation is in English so that the code and the Home Assistant
+> integration are useful to everyone.
 
-1. In Home Assistant: **Impostazioni → Add-on → Add-on Store**
-2. Menu **⋮ → Repository** e incolla:
+## Installation
+
+1. In Home Assistant go to **Settings → Add-ons → Add-on Store**
+2. Open the **⋮** menu, choose **Repositories**, and paste:
 
    ```
    https://github.com/7hemas7er/autolog-addon
    ```
 
-3. Installa **AutoLog** e avvialo.
+3. Install **AutoLog** and start it.
 
-Con l'add-on **Mosquitto** installato non serve configurare niente: le
-credenziali del broker vengono richieste al Supervisor all'avvio. Le opzioni
-disponibili sono documentate in [autolog/DOCS.md](autolog/DOCS.md).
+If you already run the **Mosquitto** add-on there is nothing to configure: the
+broker credentials are requested from the Supervisor at startup. Every option
+is documented in [autolog/DOCS.md](autolog/DOCS.md).
 
-## Entità create
+## Entities
 
-Un device per veicolo, con: consumo medio (km/L e L/100 km), costo al km,
-chilometri totali, litri totali, spesa totale, spesa del mese, ultimo prezzo al
-litro, ultimo rifornimento e prossima scadenza. I sensori numerici hanno
-`state_class` e `unit_of_measurement` corretti, quindi entrano da soli nelle
-statistiche a lungo termine.
+One device per vehicle, carrying: average consumption (km/L and L/100 km),
+cost per kilometre, total distance, total litres, total spend, spend this
+month, last price per litre, last fuel-up and next due reminder. Numeric
+sensors declare the correct `state_class` and `unit_of_measurement`, so Home
+Assistant records long-term statistics for them without any extra setup.
 
-Per registrare un rifornimento da un'automazione o da un tag NFC:
+Availability is published on `autolog/status` and backed by an MQTT Last Will,
+so if the add-on dies the entities become unavailable instead of silently
+holding a stale value.
+
+To log a fuel-up from an automation or an NFC tag on the filler flap:
 
 ```yaml
 action: mqtt.publish
 data:
-  topic: autolog/furgone/cmd/fillup
+  topic: autolog/van/cmd/fillup
   payload: '{"odo": 136000, "liters": 45.2, "total_cost": 78.40, "full": 1}'
 ```
 
-## Come sono calcolati i consumi
+The slug is the vehicle name, lowercased, with every non-alphanumeric character
+replaced by `_`. Omit `date` and today is used.
 
-Metodo pieno-a-pieno, lo stesso di Fuelly: la distanza fra due pieni completi
-divisa per i litri erogati nell'intervallo. Di conseguenza:
+## How fuel economy is calculated
 
-- il **primo** pieno non produce mai un consumo, gli manca il riferimento;
-- un rifornimento **parziale** non ha un consumo proprio: i suoi litri
-  confluiscono nel pieno successivo;
-- spuntando **"rifornimento precedente non registrato"** la catena si
-  interrompe, invece di produrre un valore falso;
-- la **media generale** è una media pesata (Σ distanze / Σ litri), non la media
-  dei singoli consumi.
+Tank-to-tank, the same method Fuelly uses: the distance between two full tanks
+divided by the litres put in over that interval. It follows that:
 
-## Scelte tecniche
+- the **first** full tank never yields a figure — there is nothing to measure from;
+- a **partial** fill-up has no figure of its own; its litres roll into the next
+  full tank;
+- ticking **"previous fuel-up not recorded"** breaks the chain rather than
+  producing a fabricated number;
+- the **overall average** is distance-weighted (Σ distance / Σ litres), not the
+  mean of the individual figures. Getting that wrong is the classic mistake, so
+  there is a test for it.
 
-**Zero dipendenze npm**, nessun build step, nessuna risorsa esterna: l'app
-funziona a Internet spento. Database SQLite in un file singolo tramite il
-modulo integrato `node:sqlite`. I grafici sono SVG generati a mano e il client
-MQTT è scritto da zero (il sottoinsieme di MQTT 3.1.1 che serve). I file in
-`autolog/public/` sono già l'artefatto: si aprono e si modificano, senza
-compilare niente.
+## Design
 
-Le decisioni prese durante lo sviluppo sono in
+**Zero npm dependencies, no build step, no external resources** — the app works
+with the internet unplugged. Storage is a single SQLite file through Node's
+built-in `node:sqlite`. The charts are hand-written SVG and the MQTT client is
+implemented from scratch (just the subset of MQTT 3.1.1 that is needed). The
+files under `autolog/public/` *are* the artefact: open one, edit it, reload.
+
+The reasoning behind the non-obvious choices is recorded in
 [autolog/DECISIONS.md](autolog/DECISIONS.md).
 
-## Test
+## Tests
 
 ```sh
 cd autolog && npm test
 ```
 
-Coprono il calcolo dei consumi (parziali, catene interrotte, media pesata,
-chilometraggio incoerente, divisione per zero), il parser CSV (Fuelly in miglia
-e galloni, Fuelio, CSV italiano, righe malformate), il round-trip
-export/import JSON, la codifica dei pacchetti MQTT e il giro completo del
-publisher contro un broker finto.
+60 tests covering the consumption maths (partial fills, broken chains,
+weighted average, non-increasing odometer, division by zero), the CSV parser
+(Fuelly in miles and US gallons, Fuelio, Italian CSV, malformed rows), the
+JSON export/import round-trip, MQTT packet encoding including packets split
+across TCP chunks, and the full publisher flow against a stub broker.
 
-## Limiti da conoscere prima di installarlo
+## Scope
 
-- **È monoutente per scelta.** Chiunque acceda all'Ingress vede e modifica
-  tutti i veicoli: non ci sono profili separati per persona.
-- **Architetture supportate: `amd64` e `aarch64`.** L'immagine base
-  `node:24-alpine` non esiste per armv7, quindi su un Raspberry Pi a 32 bit
-  non si installa.
-- **Progetto personale.** È usato quotidianamente da chi lo ha scritto, ma non
-  c'è alcuna garanzia di supporto: issue e pull request sono benvenute, le
-  risposte possono tardare.
+Worth knowing before you install it:
 
-## Licenza
+- **The interface is Italian only.** Labels, dates and number formatting are
+  Italian; units are kilometres, litres and euros. There is no translation
+  layer, and adding one would touch every view.
+- **It is single-user by design.** Anyone who can reach the Ingress panel sees
+  and edits every vehicle. There are no per-person profiles.
+- **Architectures: `amd64` and `aarch64`.** The `node:24-alpine` base image is
+  not published for armv7, so 32-bit Raspberry Pi installs are not supported.
+- **This is a personal project.** It is used daily by its author, but no
+  support is promised. Issues and pull requests are welcome; replies may be slow.
 
-MIT — vedi [LICENSE](LICENSE).
+## Licence
+
+MIT — see [LICENSE](LICENSE).

@@ -1,141 +1,139 @@
-# Decisioni prese durante lo sviluppo
+# Design decisions
 
-Registro delle scelte fatte dove SPEC.md lasciava margine. Criterio applicato:
-l'opzione più semplice che rispetta i vincoli non negoziabili.
+A record of the choices made where more than one option was defensible, and
+why. The guiding rule was: the simplest option that satisfies the hard
+constraints (zero npm dependencies, no build step, no external resources, all
+URLs relative).
 
-## Architettura
+## Architecture
 
-- **`lib/calc.js` è servito al browser sulla route `calc.js`.** Il file usa un
-  wrapper UMD minimale (`module.exports` in Node, `window.AutoLogCalc` nel
-  browser). Un solo algoritmo di calcolo, testato una volta sola, nessuna
-  duplicazione. La route è gestita da `server.js` prima dello static di
-  `public/`.
-- **`onDataChanged(vehicleId, table, action)` in `lib/db.js`** è l'hook unico
-  attraversato da ogni scrittura via API. Oggi non fa nulla: in FASE 2 ci si
-  aggancia il publisher MQTT con `DB.addChangeListener(fn)`.
-- **Le opzioni dell'add-on** vengono già lette da `<DATA_DIR>/options.json` se il
-  file esiste (chiavi `password`, `secret`), con precedenza alle variabili
-  d'ambiente. Così in FASE 2 non serve toccare il bootstrap.
+- **`lib/calc.js` is served to the browser** on the relative route `calc.js`.
+  The file uses a minimal UMD wrapper (`module.exports` under Node,
+  `window.AutoLogCalc` in the browser). One consumption algorithm, tested once,
+  never duplicated between server and client.
+- **`onDataChanged(vehicleId, table, action)` in `lib/db.js`** is the single
+  hook every write passes through. It was added empty in phase one purely so
+  the MQTT publisher could be attached later without touching the CRUD layer.
+- **Add-on options are read from `<DATA_DIR>/options.json`** when present, with
+  environment variables taking precedence.
 
-## Calcolo
+## Consumption maths
 
-- **Ordinamento canonico** dei rifornimenti: `odo` crescente, tie-break su
-  `date` e poi `id`. Il metodo pieno-a-pieno è definito sulla progressione del
-  contachilometri, non su quella delle date.
-- **Odo uguale o decrescente** rispetto al pieno precedente: nessun consumo e
-  flag `odo_warning` sul rifornimento, mostrato in lista come badge rosso
-  "km incoerenti". Il pieno resta comunque il nuovo riferimento.
-- **`missed` interrompe la catena** ma il rifornimento stesso diventa il nuovo
-  `lastFull`, come da specifica.
-- **Media generale**: `Σ distanze valide / Σ litri validi`. In `computeStats`
-  sono esposti anche `measured_km` e `measured_liters`, cioè i totali su cui la
-  media è calcolata, che sono un sottoinsieme dei totali complessivi.
-- **Km totali**: `max(odo) − start_odo`, con fallback su `min(odo)` quando
-  `start_odo` è 0 o assente. Anche l'`odo` delle spese concorre al massimo.
-- **km/mese e €/mese** sono normalizzati sull'arco temporale effettivo dei dati
-  (dalla prima all'ultima data registrata) diviso 30,44 giorni.
+- **Canonical ordering** of fuel-ups is by odometer ascending, tie-broken on
+  date then id. Tank-to-tank is defined by odometer progression, not by dates.
+- **Non-increasing odometer** against the previous full tank produces no figure
+  and raises an `odo_warning` flag, shown in the list as a red badge. The
+  fill-up still becomes the new reference point.
+- **`missed` breaks the chain**, but the fill-up carrying the flag becomes the
+  new reference.
+- **The overall average** is Σ valid distance / Σ valid litres. `computeStats`
+  also exposes `measured_km` and `measured_liters` — the subset the average was
+  actually computed over, which is smaller than the totals.
+- **Total distance** is `max(odo) − start_odo`, falling back to `min(odo)` when
+  `start_odo` is zero or absent. Expense odometer readings count towards the
+  maximum too.
+- **Distance and cost per month** are normalised over the real span of the data
+  divided by 30.44 days.
 
-## Import CSV
+## CSV import
 
-- **La convenzione numerica si deduce dal separatore**: file con `,` come
-  separatore di colonna sono trattati come inglesi (`.` decimale), file con `;`
-  o tabulazione come italiani (`,` decimale). Senza questa regola `10.000`
-  galloni di un export Fuelly diventerebbe diecimila litri. `parseNumber` da
-  sola, senza indicazione di locale, mantiene l'euristica generica.
-- **`price_l` è sempre ricalcolato da `total_cost / liters`** quando entrambi
-  sono noti, sia all'import sia nella coercizione del DB: il totale è la fonte
-  di verità.
-- **Righe senza data o senza km sono scartate** e conteggiate in `skipped`, con
-  il motivo nell'elenco `errors` (mostrato in anteprima, primi 10).
-- **Volume mancante ricavato da costo e prezzo** quando possibile, prima di
-  scartare la riga.
+- **The numeric convention is inferred from the column separator**: files using
+  `,` are treated as English (`.` is the decimal mark), files using `;` or tab
+  as Italian (`,` is the decimal mark). Without this rule, `10.000` gallons in
+  a Fuelly export would import as ten thousand litres.
+- **A column literally named `price` is ambiguous** — Drivvo means the total
+  paid, Fuelio means the unit price. When no dedicated unit-price column
+  exists, the decision is made from the data: a small median value (≤ 5)
+  against normal volumes (≥ 5) is a unit price, not a three-euro fill-up.
+- **`price_l` is always recomputed** as `total_cost / liters` when both are
+  known, at import and in the database coercion layer. The total is the source
+  of truth.
+- **Rows without a date or an odometer reading are skipped**, counted, and the
+  reason is listed in the preview.
 
 ## Frontend
 
-- **Nessun router**: la vista corrente è uno stato in memoria, salvato in
-  `localStorage` solo come preferenza UI. L'unica eccezione all'hash è
-  `#new-fillup`, usata dallo shortcut del manifest e subito ripulita.
-- **Campi numerici come `type="text"` con `inputmode="decimal"`**: `type=number`
-  rifiuta la virgola decimale italiana su diverse tastiere mobili. La
-  conversione avviene in `numIn()`.
-- **Tema**: la scelta esplicita dell'utente vince, altrimenti si segue
-  `prefers-color-scheme`. Entrambe le palette sono definite come custom
-  properties, il tema scuro non è un'inversione.
-- **`[hidden] { display: none !important; }`** in CSS: senza questa regola le
-  classi con `display` esplicito (`.login`) ignorano l'attributo `hidden`.
-- **Grafici**: gli assi Y usano tacche "gradevoli" calcolate a runtime; le
-  etichette numeriche compaiono solo su primo, ultimo, massimo e minimo punto.
-  Il tooltip è un elemento HTML condiviso posizionato in `fixed`, così funziona
-  identico con mouse, dito e tastiera (focus sui punti).
+- **No router.** The current view is in-memory state, persisted to
+  `localStorage` only as a UI preference. The one exception is `#new-fillup`,
+  used by the PWA manifest shortcut and cleared immediately.
+- **Numeric fields are `type="text"` with `inputmode="decimal"`.** `type=number`
+  rejects the Italian decimal comma on several mobile keyboards.
+- **Theme**: an explicit user choice wins, otherwise `prefers-color-scheme`.
+  Both palettes are defined as custom properties; the dark theme is a designed
+  palette, not an inversion.
+- **`[hidden] { display: none !important; }`** is required: without it, classes
+  carrying an explicit `display` ignore the `hidden` attribute.
+- **Charts** compute readable axis ticks at runtime and label only the first,
+  last, highest and lowest point. The average is drawn as a dashed line and
+  labelled in a legend *outside* the plot — inside, it collided with the value
+  labels. The tooltip is a single shared HTML element positioned `fixed`, so it
+  behaves identically for mouse, touch and keyboard focus.
 
-## Sicurezza
+## Security
 
-- La password, se impostata, è confrontata in tempo costante sui digest SHA-256.
-  Il cookie di sessione è `HttpOnly; SameSite=Lax` con token
-  `<scadenza>.<HMAC(scadenza)>` valido 90 giorni.
-- Se `AUTOLOG_SECRET` non è impostata ne viene generata una casuale all'avvio:
-  di conseguenza un riavvio invalida le sessioni. Documentato nel README.
+- The optional password is compared in constant time over SHA-256 digests. The
+  session cookie is `HttpOnly; SameSite=Lax`, carrying
+  `<expiry>.<HMAC(expiry)>`, valid for 90 days.
+- If `AUTOLOG_SECRET` is unset a random one is generated at startup, so a
+  restart invalidates sessions.
 
-## FASE 2 — Home Assistant
+## Home Assistant
 
-- **Client MQTT scritto a mano** (`lib/mqtt.js`, ~250 righe). Il vincolo "zero
-  dipendenze npm" vale anche qui, quindi niente `mqtt.js`: è implementato il
-  sottoinsieme di MQTT 3.1.1 che serve (CONNECT con Last Will, PUBLISH QoS 0/1,
-  SUBSCRIBE, PINGREQ, riconnessione con backoff esponenziale fino a 30 s).
-  Niente QoS 2 e niente TLS: il broker è raggiungibile sulla rete interna di
-  Docker. Il Supervisor dichiara `protocol: "3.1.1"` come massimo, quindi non
-  serve MQTT 5.
-- **Il parser accumula i byte**: TCP non garantisce che un chunk corrisponda a
-  un pacchetto, e con dieci payload di discovery pubblicati in fila è la norma
-  riceverne più d'uno nello stesso chunk. Coperto da test espliciti.
-- **Coda dei messaggi offline** (max 500): se il broker non è raggiungibile gli
-  aggiornamenti non si perdono, vengono ripubblicati alla riconnessione.
-- **Debounce di 1,5 s** sulle pubblicazioni. L'import di 170 rifornimenti
-  genera 170 eventi `onDataChanged`: senza debounce sarebbero 170 ricalcoli
-  completi delle statistiche e altrettante pubblicazioni.
-- **Un solo topic di stato per veicolo** (`autolog/<slug>/state`) con un JSON
-  che contiene tutti i valori; ogni sensore lo legge con un `value_template`.
-  Dieci sensori con dieci topic separati sarebbero dieci volte il traffico per
-  lo stesso ricalcolo.
-- **Discovery e stato sono `retained`**: dopo un riavvio di Home Assistant le
-  entità si ricreano da sole senza aspettare il prossimo aggiornamento. Il
-  rovescio è che un veicolo eliminato lascerebbe entità fantasma, perciò
-  archiviazione ed eliminazione pubblicano un payload vuoto sul topic di
-  discovery, che è il modo previsto da HA per rimuoverle.
-- **Unità dei sensori monetari**: `EUR`, non `€`. Il device class `monetary`
-  richiede un codice valuta ISO 4217 e ammette solo `state_class` `total` o
-  `total_increasing`; `spesa_mese` usa `total` perché si azzera ogni mese,
-  `spesa_totale` usa `total_increasing`. Verificato da un test che fallisce se
-  qualcuno aggiunge un sensore monetario con lo state_class sbagliato.
-- **I timestamp sono ISO 8601 con fuso** (`2024-01-05T00:00:00+00:00`): il
-  device class `timestamp` di HA rifiuta le date secche.
-- **Slug del veicolo con `_`**: `node_id` e `object_id` dei topic di discovery
-  ammettono solo `[a-zA-Z0-9_-]`, quindi lo slug qui è diverso da quello usato
-  per i nomi dei file CSV (che usa `-`). Due veicoli con lo stesso nome
-  ricevono il suffisso dell'id per non collidere sullo stesso device.
-- **Autenticazione disattivata sotto Ingress**: se `SUPERVISOR_TOKEN` è
-  presente, la password interna si spegne da sola perché l'autenticazione la fa
-  Home Assistant. Resta l'opzione `force_password` per chi espone anche la
-  porta 8099 in chiaro.
-- **Credenziali MQTT dal Supervisor**: `GET http://supervisor/services/mqtt`
-  con `Authorization: Bearer $SUPERVISOR_TOKEN`, campi `host`, `port`,
-  `username`, `password` (verificati sul sorgente del Supervisor). Le opzioni
-  manuali hanno la precedenza, così si può puntare a un broker esterno.
-- **`services: mqtt:want`, non `mqtt:need`**: con `need` l'add-on si rifiuta di
-  partire se manca il broker. Con `want` l'interfaccia resta comunque usabile e
-  i sensori semplicemente non compaiono.
-- **`addon/` contiene una copia dell'applicazione**, sincronizzata da
-  `scripts/build-addon.sh`. Il Supervisor usa la cartella dell'add-on come
-  contesto di build di Docker e non può risalire alla radice del repository:
-  o si duplica, o si pubblica un'immagine su un registry. La copia è generata,
-  quindi è in `.gitignore`.
-
-- **`panel_admin: false`**: di default la voce dell'add-on in barra laterale e'
-  riservata al gruppo admin (`require_admin: true` in `get_panels`). Con
-  `panel_admin: false` la vedono anche gli utenti non amministratori, che e'
-  il caso d'uso normale di AutoLog: chi registra un rifornimento non ha motivo
-  di essere admin di Home Assistant. Attenzione: il permesso e' per gruppo,
-  non per utente, quindi vale per *tutti* i non admin.
-- **Il valore viene letto da HA Core all'avvio**: cambiare `config.yaml` e
-  ricostruire l'add-on non basta, serve un riavvio di Home Assistant Core
-  perche' il pannello venga registrato di nuovo.
+- **The MQTT client is written from scratch** (`lib/mqtt.js`, ~250 lines). The
+  zero-dependency constraint applies here too, so instead of `mqtt.js` there is
+  the subset of MQTT 3.1.1 that is actually needed: CONNECT with Last Will,
+  PUBLISH at QoS 0/1, SUBSCRIBE, PINGREQ, and reconnection with exponential
+  backoff capped at 30 s. No QoS 2 and no TLS — the broker is reachable on the
+  internal Docker network. The Supervisor advertises `protocol: "3.1.1"` as its
+  maximum, so MQTT 5 would be pointless.
+- **The parser accumulates bytes.** TCP makes no promise that one chunk is one
+  packet, and with ten discovery payloads published back to back, receiving
+  several in a single chunk is the norm rather than the exception. Both cases
+  have explicit tests.
+- **An offline queue** (capped at 500 messages) means updates are not lost while
+  the broker is unreachable; they are republished on reconnect.
+- **Publishing is debounced by 1.5 s.** Importing 170 fuel-ups fires 170
+  `onDataChanged` events; without the debounce that would be 170 full statistics
+  recomputations and 170 publishes.
+- **One state topic per vehicle** (`autolog/<slug>/state`) carrying a single
+  JSON document that every sensor reads through a `value_template`. Ten
+  separate topics would mean ten times the traffic for the same recomputation.
+- **Discovery and state are retained**, so entities reappear by themselves after
+  a Home Assistant restart. The flip side is that a deleted vehicle would leave
+  ghost entities behind, so archiving or deleting publishes an empty payload to
+  the discovery topic — the mechanism Home Assistant defines for removal.
+- **Monetary sensors use `EUR`, not `€`.** The `monetary` device class requires
+  an ISO 4217 currency code and accepts only `total` or `total_increasing`;
+  `spesa_mese` uses `total` because it resets monthly, `spesa_totale` uses
+  `total_increasing`. A test fails if anyone adds a monetary sensor with the
+  wrong state class.
+- **Timestamps are full ISO 8601 with an offset** (`2024-01-05T00:00:00+00:00`);
+  the `timestamp` device class rejects bare dates.
+- **The vehicle slug uses `_`**: `node_id` and `object_id` in discovery topics
+  accept only `[a-zA-Z0-9_-]`, so this slug differs from the one used for CSV
+  filenames (which uses `-`). Two vehicles sharing a name get the id appended so
+  they cannot collide on the same device.
+- **Built-in authentication switches itself off under Ingress**: when
+  `SUPERVISOR_TOKEN` is present, Home Assistant is doing the authenticating.
+  `force_password` exists for anyone also exposing port 8099 in the clear.
+- **Broker credentials come from `GET http://supervisor/services/mqtt`** with
+  `Authorization: Bearer $SUPERVISOR_TOKEN`, returning `host`, `port`,
+  `username` and `password`. Manual options take precedence, so an external
+  broker can be used instead.
+- **`services: mqtt:want`, not `mqtt:need`.** With `need`, the add-on refuses to
+  start when no broker is present. With `want`, the interface still works and
+  the sensors simply do not appear.
+- **The base image is pinned in the Dockerfile.** The Supervisor passes
+  `BUILD_FROM=ghcr.io/home-assistant/base:latest` and ignores a `build_from`
+  declared in `build.yaml`, accepting only images from its own registry. The
+  Home Assistant base image ships no Node, so the container exited with
+  `node: not found` (exit 127) until the image was declared directly.
+- **`arch` lists only `aarch64` and `amd64`.** `node:24-alpine` is not published
+  for armv7, so declaring it would fail the build on a 32-bit Raspberry Pi.
+- **`panel_admin: false`**: by default the sidebar entry is restricted to the
+  admin group (`require_admin: true` in `get_panels`). Whoever logs a fuel-up
+  has no reason to be a Home Assistant administrator. Note the permission is
+  per *group*, not per user: it applies to every non-admin.
+- **That value is read by Home Assistant Core when the panel is registered**, so
+  changing `config.yaml` and rebuilding the add-on is not enough — Core has to
+  restart before the new value takes effect.
