@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AutoLog">
+  <rect width="512" height="512" rx="112" fill="#2a78d6"/>
+  <path d="M116 320a140 140 0 0 1 280 0" fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round"/>
+  <path d="M256 320 L323 253" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="256" cy="320" r="30" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AutoLog</title>
+<meta name="description" content="Registro rifornimenti, consumi e manutenzione dei veicoli.">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AutoLog">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div id="login" class="login" hidden>
+  <form id="login-form" class="login-card">
+    <h1>AutoLog</h1>
+    <input class="sr-only" type="text" name="username" autocomplete="username" value="autolog" tabindex="-1" aria-hidden="true" readonly>
+    <label for="login-password">Password</label>
+    <input id="login-password" type="password" autocomplete="current-password" required>
+    <p id="login-error" class="error" role="alert" hidden></p>
+    <button type="submit" class="btn primary">Entra</button>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="topbar-row">
+      <label class="sr-only" for="vehicle-select">Veicolo</label>
+      <select id="vehicle-select" aria-label="Veicolo selezionato"></select>
+      <button id="theme-toggle" class="icon-btn" type="button" aria-label="Cambia tema">
+        <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+      </button>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sezioni">
+      <button type="button" data-view="riepilogo" class="tab" aria-current="page">Riepilogo</button>
+      <button type="button" data-view="rifornimenti" class="tab">Rifornimenti</button>
+      <button type="button" data-view="spese" class="tab">Spese</button>
+      <button type="button" data-view="promemoria" class="tab">Promemoria</button>
+      <button type="button" data-view="grafici" class="tab">Grafici</button>
+      <button type="button" data-view="veicoli" class="tab">Veicoli</button>
+      <button type="button" data-view="dati" class="tab">Dati</button>
+    </nav>
+  </header>
+
+  <p id="offline-banner" class="banner" role="status" hidden>Dati non raggiungibili: il server non risponde.</p>
+
+  <main id="main" class="main"></main>
+
+  <button id="fab" class="fab" type="button" aria-label="Aggiungi rifornimento">
+    <svg viewBox="0 0 24 24" aria-hidden="true" width="24" height="24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<dialog id="dlg-fillup">
+  <form method="dialog" id="form-fillup" class="form">
+    <h2 id="fillup-title">Nuovo rifornimento</h2>
+    <div class="grid2">
+      <p class="field"><label for="f-date">Data</label><input id="f-date" name="date" type="date" required></p>
+      <p class="field"><label for="f-odo">Chilometri</label><input id="f-odo" name="odo" type="text" inputmode="decimal" required></p>
+      <p class="field"><label for="f-liters">Litri</label><input id="f-liters" name="liters" type="text" inputmode="decimal" required></p>
+      <p class="field"><label for="f-cost">Costo totale (€)</label><input id="f-cost" name="total_cost" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="f-price">Prezzo/litro (€/L)</label><input id="f-price" name="price_l" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="f-fuel">Carburante</label><input id="f-fuel" name="fuel_type" type="text" list="fuel-list"></p>
+    </div>
+    <p class="check"><label><input id="f-full" name="full" type="checkbox" checked> Pieno completo</label></p>
+    <p class="check"><label><input id="f-missed" name="missed" type="checkbox"> Rifornimento precedente non registrato</label></p>
+    <div class="grid2">
+      <p class="field"><label for="f-station">Distributore</label><input id="f-station" name="station" type="text"></p>
+      <p class="field"><label for="f-location">Luogo</label><input id="f-location" name="location" type="text"></p>
+    </div>
+    <p class="field"><label for="f-notes">Note</label><input id="f-notes" name="notes" type="text"></p>
+    <ul id="f-warnings" class="warnings" role="status"></ul>
+    <div class="actions">
+      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-action="cancel">Annulla</button>
+      <button type="submit" class="btn primary">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-expense">
+  <form method="dialog" id="form-expense" class="form">
+    <h2 id="expense-title">Nuova spesa</h2>
+    <div class="grid2">
+      <p class="field"><label for="e-date">Data</label><input id="e-date" name="date" type="date" required></p>
+      <p class="field"><label for="e-odo">Chilometri</label><input id="e-odo" name="odo" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="e-category">Categoria</label><input id="e-category" name="category" type="text" list="category-list" required></p>
+      <p class="field"><label for="e-cost">Costo (€)</label><input id="e-cost" name="cost" type="text" inputmode="decimal" required></p>
+    </div>
+    <p class="field"><label for="e-description">Descrizione</label><input id="e-description" name="description" type="text"></p>
+    <div class="grid2">
+      <p class="field"><label for="e-vendor">Officina / fornitore</label><input id="e-vendor" name="vendor" type="text"></p>
+      <p class="field"><label for="e-notes">Note</label><input id="e-notes" name="notes" type="text"></p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-action="cancel">Annulla</button>
+      <button type="submit" class="btn primary">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-reminder">
+  <form method="dialog" id="form-reminder" class="form">
+    <h2 id="reminder-title">Nuovo promemoria</h2>
+    <p class="field"><label for="r-title">Titolo</label><input id="r-title" name="title" type="text" required></p>
+    <div class="grid2">
+      <p class="field"><label for="r-category">Categoria</label><input id="r-category" name="category" type="text" list="category-list"></p>
+      <p class="field"><label for="r-due-date">Scadenza (data)</label><input id="r-due-date" name="due_date" type="date"></p>
+      <p class="field"><label for="r-due-odo">Scadenza (km)</label><input id="r-due-odo" name="due_odo" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="r-every-months">Ricorre ogni (mesi)</label><input id="r-every-months" name="every_months" type="text" inputmode="numeric"></p>
+      <p class="field"><label for="r-every-km">Ricorre ogni (km)</label><input id="r-every-km" name="every_km" type="text" inputmode="decimal"></p>
+    </div>
+    <p class="field"><label for="r-notes">Note</label><input id="r-notes" name="notes" type="text"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-action="cancel">Annulla</button>
+      <button type="submit" class="btn primary">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-vehicle">
+  <form method="dialog" id="form-vehicle" class="form">
+    <h2 id="vehicle-title">Nuovo veicolo</h2>
+    <p class="field"><label for="v-name">Nome</label><input id="v-name" name="name" type="text" required></p>
+    <div class="grid2">
+      <p class="field"><label for="v-make">Marca</label><input id="v-make" name="make" type="text"></p>
+      <p class="field"><label for="v-model">Modello</label><input id="v-model" name="model" type="text"></p>
+      <p class="field"><label for="v-year">Anno</label><input id="v-year" name="year" type="text" inputmode="numeric"></p>
+      <p class="field"><label for="v-plate">Targa</label><input id="v-plate" name="plate" type="text"></p>
+      <p class="field"><label for="v-fuel">Carburante</label><input id="v-fuel" name="fuel_type" type="text" list="fuel-list"></p>
+      <p class="field"><label for="v-tank">Serbatoio (L)</label><input id="v-tank" name="tank_l" type="text" inputmode="decimal"></p>
+      <p class="field"><label for="v-start">Km iniziali</label><input id="v-start" name="start_odo" type="text" inputmode="decimal"></p>
+    </div>
+    <p class="check"><label><input id="v-archived" name="archived" type="checkbox"> Archiviato</label></p>
+    <p class="field"><label for="v-notes">Note</label><input id="v-notes" name="notes" type="text"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" data-action="delete" hidden>Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-action="cancel">Annulla</button>
+      <button type="submit" class="btn primary">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-import">
+  <form method="dialog" id="form-import" class="form">
+    <h2>Anteprima import</h2>
+    <p id="import-summary" class="muted"></p>
+    <div class="table-wrap"><table id="import-table"></table></div>
+    <ul id="import-errors" class="warnings"></ul>
+    <div class="actions">
+      <span class="spacer"></span>
+      <button type="button" class="btn" data-action="cancel">Annulla</button>
+      <button type="submit" class="btn primary">Importa</button>
+    </div>
+  </form>
+</dialog>
+
+<datalist id="fuel-list">
+  <option value="Benzina"></option><option value="Diesel"></option><option value="GPL"></option>
+  <option value="Metano"></option><option value="Elettrico"></option><option value="Ibrido"></option>
+</datalist>
+<datalist id="category-list">
+  <option value="Manutenzione"></option><option value="Tagliando"></option><option value="Gomme"></option>
+  <option value="Assicurazione"></option><option value="Bollo"></option><option value="Revisione"></option>
+  <option value="Riparazione"></option><option value="Multa"></option><option value="Autostrada"></option>
+  <option value="Parcheggio"></option><option value="Lavaggio"></option><option value="Accessori"></option>
+  <option value="Altro"></option>
+</datalist>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="calc.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

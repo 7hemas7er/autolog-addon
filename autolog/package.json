@@ -1,0 +1,12 @@
+{
+  "name": "autolog",
+  "version": "1.0.0",
+  "description": "Registro rifornimenti, consumi e manutenzione veicoli, self-hosted",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --experimental-sqlite --test test/*.test.js"
+  }
+}
